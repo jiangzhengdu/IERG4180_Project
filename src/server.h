@@ -14,6 +14,9 @@ typedef struct server_argument {
     char* lport;
     long rbufsize;
     long sbufsize;
+    int stat; // default is 500ms
+    int serverModel; // 0 for threadPool 1 for select
+    int poolSize;  // default is 8
 }Server_argument;
 
 typedef struct statistics{
@@ -34,6 +37,15 @@ typedef struct statistics{
     int p_num_index;
 }Statistics;
 
+typedef struct multiThreadFunArg{
+    Server_argument server_argument;
+    Sys_packet sys_packet;
+    ThreadPool* pool;
+    int socket;
+}multiThreadFunArg;
+
+
+
 void print_prompt_information_server();
 
 void server(int argc, char** argv);
@@ -44,4 +56,20 @@ void sys_server_from_client(server_argument server_argument, Sys_packet *sys_pac
 
 void init_statistics(Statistics* statistics);
 
-void  out_packet(Sys_packet sysPacket);
+void out_packet(Sys_packet sysPacket);
+
+void multiThreadServer(Server_argument serverArgument);
+
+void client_send_tcp(void *arg);
+
+void client_send_udp(void *argv);
+
+void server_send_udp(void *arg);
+
+void server_send_tcp(void *arg);
+
+void server_response_tcp(void * arg);
+
+void server_response_udp_multi_thread(void * arg);
+
+void fun(void * argv);

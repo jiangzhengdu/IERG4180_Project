@@ -27,11 +27,11 @@ obj = $(patsubst %.c,%.o,$(src))
 
 all:$(target1) $(target2)
 
-$(target1): server.o util.o
-	$(CC) $(CFLAGS) $^ -o $@
+$(target1): threadpool.o server.o util.o
+	$(CC) $(CFLAGS) $^ -o $@ -lpthread
 
 $(target2): client.o util.o
-	$(CC) $(CFLAGS) $^ -o $@ -Wall
+	$(CC) $(CFLAGS) $^ -o $@ -Wall -lpthread
 
 %.o: %.c $(deps)
 	$(CC) $(CFLAGS) -c $< -o $@

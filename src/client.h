@@ -4,18 +4,7 @@
 #endif //IERG4180_PROJECT2_CLIENT_H
 
 # include "util.h"
-typedef struct client_argument {
-    int mode; // send = 0  recv = 1
-    long stat;
-    char* rhost;
-    char* rport;
-    int proto; // udp = 0  tcp = 1
-    long pktsize;
-    long pktrate;
-    long pktnum;
-    long sbufsize;
-    long rbufsize;
-}Client_argument;
+
 
 
 
