@@ -28,13 +28,13 @@ obj = $(patsubst %.c,%.o,$(src))
 all:$(target1) $(target2)
 
 $(target1): threadpool.o server.o util.o
-	$(CC) $(CFLAGS) $^ -o $@ -lpthread
+	$(CC) $(CFLAGS) $^ -o $@ -lpthread -lcrypto
 
 $(target2): client.o util.o
-	$(CC) $(CFLAGS) $^ -o $@ -Wall -lpthread
+	$(CC) $(CFLAGS) $^ -o $@ -Wall -lpthread -lssl  -lcrypto -I/usr/include/
 
 %.o: %.c $(deps)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@ -I/usr/include/  -lssl  -lcrypto
 
 .PHONY:clean
 clean:

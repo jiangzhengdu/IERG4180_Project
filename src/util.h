@@ -76,6 +76,8 @@ typedef struct client_argument {
     long pktnum;
     long sbufsize;
     long rbufsize;
+    char* url;
+    char* fileName;
 }Client_argument;
 
 

@@ -6,7 +6,11 @@
 #undef UNICODE
 
 # include "client.h"
-
+# include <openssl/ssl.h>
+# include <openssl/err.h>
+# include <openssl/pem.h>
+# include <openssl/x509.h>
+# include <openssl/x509_vfy.h>
 int main(int argc, char **argv) {
     if (argc < 1) {
         printf("your input arguments should be more\n");
@@ -14,13 +18,7 @@ int main(int argc, char **argv) {
     }
     Client_argument client_argument;
     argument_parse_client(argc, argv, &client_argument);
-    if (strcmp("-send", argv[1]) != 0 && strcmp("-recv", argv[1]) != 0 && strcmp("-response", argv[1] )!= 0) {
-        printf("input arguments wrong\n");
-        print_prompt_information_server();
-        return 0;
-    }
     client(argc, argv);
-
     return 0;
 }
 
@@ -28,22 +26,38 @@ int main(int argc, char **argv) {
 int client(int argc, char **argv) {
     Client_argument client_argument;
     argument_parse_client(argc, argv, &client_argument);
-
-    printf("the following content is the sender arguments\n\n");
-    printf("mode  is %d\n", client_argument.mode);
-    printf("stat  is %ld\n", client_argument.stat);
-    printf("rhost is %s\n", client_argument.rhost);
-    printf("rport is %s\n", client_argument.rport);
-    printf("proto is %d\n", client_argument.proto);
-    printf("pktsize is %ld\n", client_argument.pktsize);
-    printf("pktrate is %ld\n", client_argument.pktrate);
-    printf("pktnum is %ld\n", client_argument.pktnum);
-    printf("sbufsize is %ld\n", client_argument.sbufsize);
-    printf("rbufsize is %ld\n", client_argument.rbufsize);
+    printf("url is %s\n", client_argument.url);
+    printf("filename is %s\n", client_argument.fileName);
     printf("\n\n\n");
+    char                dest_url[8192];
+    X509                *cert = NULL;
+    X509_NAME           *certName = NULL;
+    const SSL_METHOD    *method;
+    SSL_CTX             *ctx;
+    SSL                 *ssl;
+    int server = 0;
+    int ret, i;
+    char * ptr = NULL;
+    OpenSSL_add_all_algorithms();
+    ERR_load_BIO_strings();
+    ERR_load_crypto_strings();
+    SSL_load_error_strings();
 
-    send_sys_packet(client_argument);
+    if (SSL_library_init() < 0) {
+        printf("Could not initialize the OpenSSL library !\n");
+    }
+    method = TLS_method();
+    if ((ctx = SSL_CTX_new(method)) == NULL) {
+        printf("Unable to create a new SSL context structure.\n");
+    }
+    InitTrustStore(ctx);
+
+
+
+
+
     return 0;
+
 }
 
 // this function is to parse the sender argument through argv
@@ -58,6 +72,8 @@ void argument_parse_client(int argc, char **argv, Client_argument *client_argume
     client_argument->pktnum = 0;
     client_argument->sbufsize = 65536;
     client_argument->rbufsize = 65536;
+    client_argument->url = (char *) "https://www.mclab.org";
+    client_argument->fileName = (char *)"filename";
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-send") == 0) {
@@ -73,6 +89,10 @@ void argument_parse_client(int argc, char **argv, Client_argument *client_argume
             client_argument->pktrate = 10;
             continue;
         }
+        else if (i == 1) {
+            client_argument->url = argv[1];
+            continue;
+        }
         if (i + 1 < argc && argv[i][0] == '-') {
             if (strcmp(argv[i], "-stat") == 0) {
                 client_argument->stat = strtol(argv[i + 1], NULL, 10);
@@ -83,6 +103,9 @@ void argument_parse_client(int argc, char **argv, Client_argument *client_argume
             } else if (strcmp(argv[i], "-rport") == 0) {
                 client_argument->rport = argv[i + 1];
                 continue;
+            }else if (strcmp(argv[i], "-file") == 0) {
+                    client_argument->fileName = argv[i + 1];
+                    continue;
             } else if (strcmp(argv[i], "-proto") == 0) {
                 if (strcmp(argv[i + 1], "udp") == 0) {
                     client_argument->proto = 0;
@@ -231,10 +254,6 @@ void send_sys_packet(Client_argument client_argument) {
         *left_pktnum = client_argument.pktnum;
         int p_num_index = 0;
         int closing_socket = udp_send(new_udp_socket, &p_num_index, client_argument.pktsize, left_pktnum, client_argument.pktnum,client_argument.pktrate, client_argument.stat,new_udp_socket_client_address, using_select);
-//        if (closing_socket == 1) {
-//            close(new_udp_socket);
-//            close(sockfd);
-//        }
         if (closing_socket == 1) {
 #ifdef __linux__
             close(new_udp_socket);
@@ -347,16 +366,6 @@ void send_sys_packet(Client_argument client_argument) {
         new_tcp_response_server_address.sin_port = htons(port);
         new_tcp_response_server_address.sin_addr.s_addr = servaddr.sin_addr.s_addr;
         client_response_tcp(new_tcp_response_server_address, client_argument);
-//        int using_select = 0;
-//        int * left_pktnum = (int *) malloc(sizeof(int));
-//        *left_pktnum = client_argument.pktnum;
-//        int p_num_index = 0;
-//        int closing_socket = udp_send(new_udp_socket, &p_num_index, client_argument.pktsize, left_pktnum, client_argument.pktnum,client_argument.pktrate, client_argument.stat,new_udp_socket_client_address, using_select);
-//        if (closing_socket == 1) {
-//            close(new_udp_socket);
-//            close(sockfd);
-//        }
-//        if (closing_socket == 1)
 #ifdef __linux__
 //            close(new_tcp_socket);
             close(sockfd);
