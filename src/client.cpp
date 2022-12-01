@@ -49,12 +49,14 @@ int client(int argc, char **argv) {
     if ((ctx = SSL_CTX_new(method)) == NULL) {
         printf("Unable to create a new SSL context structure.\n");
     }
+    SSL_CTX_load_verify_locations(ctx, 0, "/etc/ssl/certs");
     if (!SSL_CTX_set_default_verify_paths(ctx)) {
         printf("Unable to set default verify paths.\n");
     }
-//    X509_STORE * xStore;
-//    xStore = SSL_CTX_get_cert_store(ctx);
-    SSL_CTX_set_default_verify_store(ctx);
+    X509_STORE * xStore;
+    xStore = SSL_CTX_get_cert_store(ctx);
+//    SSL_CTX_set_default_verify_store(ctx);
+//    SSL_CTX_set_default_verify_file(ctx);
     ssl = SSL_new(ctx);
     server = create_socket(client_argument.url);
     SSL_set_fd(ssl, server);
@@ -82,6 +84,17 @@ int client(int argc, char **argv) {
     }
     else {
         printf("Successfully Validated the server certificate from %s.\n", client_argument.url);
+    }
+    ret = X509_check_host(cert, client_argument.url, strlen(client_argument.url), 0, &ptr);
+    if (ret == 1) {
+        printf("Successfully validated the server's hostname matched to %s.\n", ptr);
+        OPENSSL_free(ptr);
+    }
+    else if (ret == 0) {
+        printf("Server's hostname validation validation %s. ret is %d\n", client_argument.url, ret);
+    }
+    else {
+        printf("Hostname validation internal error %s. ret is %d\n", client_argument.url, ret);
     }
 
 
