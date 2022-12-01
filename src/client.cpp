@@ -39,7 +39,7 @@ int client(int argc, char **argv) {
     int ret, i;
     char * ptr = NULL;
     OpenSSL_add_all_algorithms();
-    ERR_load_BIO_strings();
+    //ERR_load_BIO_strings();
     ERR_load_crypto_strings();
     SSL_load_error_strings();
     if (SSL_library_init() < 0) {
@@ -96,6 +96,36 @@ int client(int argc, char **argv) {
     else {
         printf("Hostname validation internal error %s. ret is %d\n", client_argument.url, ret);
     }
+    // send a http Get request
+    char request[8192];
+    sprintf(request,
+            "GET / HTTP/1.1\r\n"
+            "Host: %s\r\n"
+            "Connection: close\r\n\r\n", client_argument.url
+            );
+    SSL_write(ssl, request, strlen(request));
+
+    // Receive and print out the HTTP response
+    printf("--------RESPONSE RECEIVED----------\n");
+    int len = 0;
+    do {
+        char buff[2000];
+        len = SSL_read(ssl, buff, sizeof(buff));
+        if (len > 0) fwrite(buff, len, 1, stdout);
+    }while(len < 0);
+    printf("\n-----------------------------------------------\n");
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     return 0;

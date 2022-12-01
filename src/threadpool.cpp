@@ -186,6 +186,7 @@ void * manager(void* arg) {
         // every 30 seconds check once
 //        sleep(30);
     }
+    return NULL;
 }
 
 // write the pool->threadID to 0
@@ -271,6 +272,7 @@ int threadPoolDestroy(ThreadPool* pool){
     pthread_cond_destroy(&pool->notEmpty);
     pthread_cond_destroy(&pool->notFull);
     free(pool);
+    return 1;
 
 }
 

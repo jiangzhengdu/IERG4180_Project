@@ -693,6 +693,7 @@ int InitializeWinsock() {
     }
     return 1;
 #endif
+    return 1;
 }
 
 // server response to client using udp, first recv a packet then send a packet
@@ -914,6 +915,7 @@ int client_response_udp(int readSocket, struct sockaddr_in client_address, Clien
     closesocket(writeSocket);
     closesocket(readSocket);
 #endif
+    return 0;
 }
 
 
@@ -1016,5 +1018,6 @@ int client_response_tcp(struct sockaddr_in server_address, Client_argument clien
     }
     free(jitterList);
     free(time_arr);
+    return 1;
 }
 
