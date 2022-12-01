@@ -29,104 +29,12 @@ int client(int argc, char **argv) {
     printf("url is %s\n", client_argument.url);
     printf("filename is %s\n", client_argument.fileName);
     printf("\n\n\n");
-    char                dest_url[8192];
-    X509                *cert = NULL;
-    X509_NAME           *certName = NULL;
-    const SSL_METHOD    *method;
-    SSL_CTX             *ctx;
-    SSL                 *ssl;
-    int server = 0;
-    int ret, i;
-    char * ptr = NULL;
-    OpenSSL_add_all_algorithms();
-    //ERR_load_BIO_strings();
-    ERR_load_crypto_strings();
-    SSL_load_error_strings();
-    if (SSL_library_init() < 0) {
-        printf("Could not initialize the OpenSSL library !\n");
+    if (client_argument.https == 0) {
+        http_request(client_argument);
     }
-    method = TLS_method();
-    if ((ctx = SSL_CTX_new(method)) == NULL) {
-        printf("Unable to create a new SSL context structure.\n");
+    else if (client_argument.https == 1) {
+        https_request(client_argument);
     }
-    SSL_CTX_load_verify_locations(ctx, 0, "/etc/ssl/certs");
-    if (!SSL_CTX_set_default_verify_paths(ctx)) {
-        printf("Unable to set default verify paths.\n");
-    }
-    X509_STORE * xStore;
-    xStore = SSL_CTX_get_cert_store(ctx);
-//    SSL_CTX_set_default_verify_store(ctx);
-//    SSL_CTX_set_default_verify_file(ctx);
-    ssl = SSL_new(ctx);
-    server = create_socket(client_argument.url);
-    SSL_set_fd(ssl, server);
-    if (server != 0) {
-        printf("Successfully made the tcp connection to %s\n", client_argument.url);
-    }
-    SSL_set_tlsext_host_name(ssl, client_argument.url);
-
-    if (SSL_connect(ssl) != 1) {
-        printf("Error: Could not build a SSL session to %s.\n", client_argument.url);
-    }
-    else {
-        printf("Successfully enabled  a SSL/TLS session to %s.\n", client_argument.url);
-    }
-    cert = SSL_get_peer_certificate(ssl);
-    if (cert == NULL) {
-        printf("Error: Could not get a certificate from %s.\n", client_argument.url);
-    }
-    else {
-        printf("Retrieved the server's certificate from %s.\n", client_argument.url);
-    }
-    ret = SSL_get_verify_result(ssl);
-    if (ret != X509_V_OK) {
-        printf("Warning : Validation failed for certificate from %s. res is %d\n", client_argument.url, ret);
-    }
-    else {
-        printf("Successfully Validated the server certificate from %s.\n", client_argument.url);
-    }
-    ret = X509_check_host(cert, client_argument.url, strlen(client_argument.url), 0, &ptr);
-    if (ret == 1) {
-        printf("Successfully validated the server's hostname matched to %s.\n", ptr);
-        OPENSSL_free(ptr);
-    }
-    else if (ret == 0) {
-        printf("Server's hostname validation validation %s. ret is %d\n", client_argument.url, ret);
-    }
-    else {
-        printf("Hostname validation internal error %s. ret is %d\n", client_argument.url, ret);
-    }
-    // send a http Get request
-    char request[8192];
-    sprintf(request,
-            "GET / HTTP/1.1\r\n"
-            "Host: %s\r\n"
-            "Connection: close\r\n\r\n", client_argument.url
-            );
-    SSL_write(ssl, request, strlen(request));
-
-    // Receive and print out the HTTP response
-    printf("--------RESPONSE RECEIVED----------\n");
-    int len = 0;
-    do {
-        char buff[2000];
-        len = SSL_read(ssl, buff, sizeof(buff));
-        if (len > 0) fwrite(buff, len, 1, stdout);
-    }while(len < 0);
-    printf("\n-----------------------------------------------\n");
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     return 0;
 
@@ -168,6 +76,7 @@ void argument_parse_client(int argc, char **argv, Client_argument *client_argume
             memset(domainName, '\0', 30 * sizeof(char));
             if (argv[i][4] == 's') {
                 client_argument->https = 1;
+                client_argument->rport = (char *)"443";
                 int k = 8;
                 while (argv[i][k] != '\0') {
                     domainName[index] = argv[i][k];
@@ -177,6 +86,7 @@ void argument_parse_client(int argc, char **argv, Client_argument *client_argume
             }
             else {
                 client_argument->https = 0;
+                client_argument->rport = (char *)"80";
                 int k = 7;
                 while (argv[i][k] != '\0') {
                     domainName[index] = argv[i][k];
@@ -496,10 +406,11 @@ std::string get_sys_packet_string(Client_argument client_argument, int out_new_p
 
 
 // this function is for create a socket for connect server
-int create_socket(char* url) {
+int create_socket(Client_argument client_argument, char* url) {
 
     int sockfd;
-    int port = 443;
+
+    int port = atoi(client_argument.rport);
     struct sockaddr_in dest_addr;
     char* ip = (char*)malloc(20 * sizeof(char));
     solve_hostname_to_ip_linux(url, ip);
@@ -520,4 +431,121 @@ int create_socket(char* url) {
     }
     printf("Socket Connected\n");
     return sockfd;
+}
+
+// this function is for http request
+int http_request(Client_argument client_argument) {
+    int sockfd = create_socket(client_argument, client_argument.url);
+    if (sockfd != 0) {
+        printf("Successfully made the tcp connection to %s\n", client_argument.url);
+    }
+    char request[1024];
+    sprintf(request,
+            "GET / HTTP/1.1\r\n"
+            "Host: %s\r\n"
+            "Connection: close\r\n\r\n", client_argument.url
+    );
+    send(sockfd, request, strlen(request), 0);
+
+    // Receive and print out the HTTP response
+    printf("--------RESPONSE RECEIVED----------\n");
+    int len = 0;
+    do {
+        char buff[4500];
+        len = read(sockfd, buff, sizeof(buff));
+        if (len > 0) fwrite(buff, len, 1, stdout);
+    }while(len < 0);
+    printf("\n-----------------------------------------------\n");
+    return 0;
+}
+
+
+// this function is for https request
+int https_request(Client_argument client_argument) {
+    char                dest_url[8192];
+    X509                *cert = NULL;
+    X509_NAME           *certName = NULL;
+    const SSL_METHOD    *method;
+    SSL_CTX             *ctx;
+    SSL                 *ssl;
+    int server = 0;
+    int ret, i;
+    char * ptr = NULL;
+    OpenSSL_add_all_algorithms();
+    //ERR_load_BIO_strings();
+    ERR_load_crypto_strings();
+    SSL_load_error_strings();
+    if (SSL_library_init() < 0) {
+        printf("Could not initialize the OpenSSL library !\n");
+    }
+    method = TLS_method();
+    if ((ctx = SSL_CTX_new(method)) == NULL) {
+        printf("Unable to create a new SSL context structure.\n");
+    }
+    SSL_CTX_load_verify_locations(ctx, 0, "/etc/ssl/certs");
+    if (!SSL_CTX_set_default_verify_paths(ctx)) {
+        printf("Unable to set default verify paths.\n");
+    }
+    X509_STORE * xStore;
+    xStore = SSL_CTX_get_cert_store(ctx);
+//    SSL_CTX_set_default_verify_store(ctx);
+//    SSL_CTX_set_default_verify_file(ctx);
+    ssl = SSL_new(ctx);
+    server = create_socket(client_argument, client_argument.url);
+    SSL_set_fd(ssl, server);
+    if (server != 0) {
+        printf("Successfully made the tcp connection to %s\n", client_argument.url);
+    }
+    SSL_set_tlsext_host_name(ssl, client_argument.url);
+
+    if (SSL_connect(ssl) != 1) {
+        printf("Error: Could not build a SSL session to %s.\n", client_argument.url);
+    }
+    else {
+        printf("Successfully enabled  a SSL/TLS session to %s.\n", client_argument.url);
+    }
+    cert = SSL_get_peer_certificate(ssl);
+    if (cert == NULL) {
+        printf("Error: Could not get a certificate from %s.\n", client_argument.url);
+    }
+    else {
+        printf("Retrieved the server's certificate from %s.\n", client_argument.url);
+    }
+    ret = SSL_get_verify_result(ssl);
+    if (ret != X509_V_OK) {
+        printf("Warning : Validation failed for certificate from %s. res is %d\n", client_argument.url, ret);
+    }
+    else {
+        printf("Successfully Validated the server certificate from %s.\n", client_argument.url);
+    }
+    ret = X509_check_host(cert, client_argument.url, strlen(client_argument.url), 0, &ptr);
+    if (ret == 1) {
+        printf("Successfully validated the server's hostname matched to %s.\n", ptr);
+        OPENSSL_free(ptr);
+    }
+    else if (ret == 0) {
+        printf("Server's hostname validation validation %s. ret is %d\n", client_argument.url, ret);
+    }
+    else {
+        printf("Hostname validation internal error %s. ret is %d\n", client_argument.url, ret);
+    }
+    // send a http Get request
+    char request[8192];
+    sprintf(request,
+            "GET / HTTP/1.1\r\n"
+            "Host: %s\r\n"
+            "Connection: close\r\n\r\n", client_argument.url
+    );
+    SSL_write(ssl, request, strlen(request));
+
+    // Receive and print out the HTTP response
+    printf("--------RESPONSE RECEIVED----------\n");
+    int len = 0;
+    do {
+        char buff[2000];
+        len = SSL_read(ssl, buff, sizeof(buff));
+        if (len > 0) fwrite(buff, len, 1, stdout);
+    }while(len < 0);
+    printf("\n-----------------------------------------------\n");
+    return 0;
 }
