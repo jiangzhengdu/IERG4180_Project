@@ -31,7 +31,7 @@ $(target1): threadpool.o server.o util.o
 	$(CC) $(CFLAGS) $^ -o $@ -lpthread -lcrypto
 
 $(target2): client.o util.o
-	$(CC) $(CFLAGS) $^ -o $@ -Wall -lpthread -lssl  -lcrypto -I/usr/include/
+	$(CC) $(CFLAGS) $^ -o $@ -Wall -lpthread  -I/usr/include/ -lssl  -lcrypto
 
 %.o: %.c $(deps)
 	$(CC) $(CFLAGS) -c $< -o $@ -I/usr/include/  -lssl  -lcrypto

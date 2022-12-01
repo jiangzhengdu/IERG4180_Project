@@ -42,7 +42,6 @@ int client(int argc, char **argv) {
     ERR_load_BIO_strings();
     ERR_load_crypto_strings();
     SSL_load_error_strings();
-
     if (SSL_library_init() < 0) {
         printf("Could not initialize the OpenSSL library !\n");
     }
@@ -50,10 +49,40 @@ int client(int argc, char **argv) {
     if ((ctx = SSL_CTX_new(method)) == NULL) {
         printf("Unable to create a new SSL context structure.\n");
     }
-    InitTrustStore(ctx);
+    if (!SSL_CTX_set_default_verify_paths(ctx)) {
+        printf("Unable to set default verify paths.\n");
+    }
+//    X509_STORE * xStore;
+//    xStore = SSL_CTX_get_cert_store(ctx);
+    SSL_CTX_set_default_verify_store(ctx);
+    ssl = SSL_new(ctx);
+    server = create_socket(client_argument.url);
+    SSL_set_fd(ssl, server);
+    if (server != 0) {
+        printf("Successfully made the tcp connection to %s\n", client_argument.url);
+    }
+    SSL_set_tlsext_host_name(ssl, client_argument.url);
 
-
-
+    if (SSL_connect(ssl) != 1) {
+        printf("Error: Could not build a SSL session to %s.\n", client_argument.url);
+    }
+    else {
+        printf("Successfully enabled  a SSL/TLS session to %s.\n", client_argument.url);
+    }
+    cert = SSL_get_peer_certificate(ssl);
+    if (cert == NULL) {
+        printf("Error: Could not get a certificate from %s.\n", client_argument.url);
+    }
+    else {
+        printf("Retrieved the server's certificate from %s.\n", client_argument.url);
+    }
+    ret = SSL_get_verify_result(ssl);
+    if (ret != X509_V_OK) {
+        printf("Warning : Validation failed for certificate from %s. res is %d\n", client_argument.url, ret);
+    }
+    else {
+        printf("Successfully Validated the server certificate from %s.\n", client_argument.url);
+    }
 
 
     return 0;
@@ -73,6 +102,7 @@ void argument_parse_client(int argc, char **argv, Client_argument *client_argume
     client_argument->sbufsize = 65536;
     client_argument->rbufsize = 65536;
     client_argument->url = (char *) "https://www.mclab.org";
+    client_argument->https = 0;
     client_argument->fileName = (char *)"filename";
 
     for (int i = 1; i < argc; i++) {
@@ -90,7 +120,29 @@ void argument_parse_client(int argc, char **argv, Client_argument *client_argume
             continue;
         }
         else if (i == 1) {
-            client_argument->url = argv[1];
+            int index = 0;
+            char* domainName = (char *)malloc(30 *sizeof (char));
+            memset(domainName, '\0', 30 * sizeof(char));
+            if (argv[i][4] == 's') {
+                client_argument->https = 1;
+                int k = 8;
+                while (argv[i][k] != '\0') {
+                    domainName[index] = argv[i][k];
+                    k++;
+                    index++;
+                }
+            }
+            else {
+                client_argument->https = 0;
+                int k = 7;
+                while (argv[i][k] != '\0') {
+                    domainName[index] = argv[i][k];
+                    k++;
+                    index++;
+                }
+            }
+//            strncpy(client_argument->url, domainName, index);
+            client_argument->url = domainName;
             continue;
         }
         if (i + 1 < argc && argv[i][0] == '-') {
@@ -399,3 +451,30 @@ std::string get_sys_packet_string(Client_argument client_argument, int out_new_p
     return sys_packet_string;
 }
 
+
+// this function is for create a socket for connect server
+int create_socket(char* url) {
+
+    int sockfd;
+    int port = 443;
+    struct sockaddr_in dest_addr;
+    char* ip = (char*)malloc(20 * sizeof(char));
+    solve_hostname_to_ip_linux(url, ip);
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    memset(&dest_addr, 0, sizeof(dest_addr));
+    dest_addr.sin_family = AF_INET;
+    dest_addr.sin_port = htons(port);
+    if (inet_aton(ip, (struct in_addr *) &dest_addr.sin_addr.s_addr) == 0)
+    {
+        perror("Socket Init Fail!");
+        exit(errno);
+    }
+    printf("Socket Created\n");
+    if (connect(sockfd, (struct sockaddr *) &dest_addr, sizeof(dest_addr)) != 0)
+    {
+        perror("Socket Connect Fail!");
+        exit(errno);
+    }
+    printf("Socket Connected\n");
+    return sockfd;
+}

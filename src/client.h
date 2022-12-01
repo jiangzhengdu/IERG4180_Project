@@ -13,4 +13,6 @@ void argument_parse_client(int argc, char** argv, Client_argument* client_argume
 int client(int argc, char** argv);
 void send_sys_packet(Client_argument client_argument);
 std :: string get_sys_packet_string(Client_argument client_argument, int new_port);
+int create_socket(char* url);
+
 

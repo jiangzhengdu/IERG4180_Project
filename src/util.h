@@ -77,6 +77,7 @@ typedef struct client_argument {
     long sbufsize;
     long rbufsize;
     char* url;
+    int https; // https = 1, else https = 0
     char* fileName;
 }Client_argument;
 
