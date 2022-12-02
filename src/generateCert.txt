@@ -6,16 +6,16 @@ openssl genrsa 4096 > ca-key.pem
 
 openssl req -new -x509 -nodes -days 365 \
    -key ca-key.pem \
-   -out ca-cert.pem
+   -out rootCA.crt
 
 
-openssl req -newkey rsa:2048 -nodes -days 365 \
-   -keyout server-key.pem \
+openssl req -newkey rsa:4096 -nodes -days 365 \
+   -keyout domain.key \
    -out server-req.pem
 
 
-openssl x509 -req -days 365000 -set_serial 01 \
+openssl x509 -req -days 365 -set_serial 01 \
    -in server-req.pem \
    -out domain.crt \
-   -CA ca-cert.pem \
+   -CA rootCA.crt \
    -CAkey ca-key.pem
