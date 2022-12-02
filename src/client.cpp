@@ -515,6 +515,10 @@ int https_request(Client_argument client_argument) {
     else {
         printf("Retrieved the server's certificate from %s.\n", client_argument.url);
     }
+    char certInfo[2000];
+    X509_NAME_oneline(X509_get_subject_name(cert), certInfo, sizeof(certInfo));
+    printf("Displaying the certificate subject data\n");
+    printf("%s\n", certInfo);
     ret = SSL_get_verify_result(ssl);
     if (ret != X509_V_OK) {
         printf("Warning : Validation failed for certificate from %s. res is %d\n", client_argument.url, ret);
@@ -534,6 +538,7 @@ int https_request(Client_argument client_argument) {
         printf("Hostname validation internal error %s. ret is %d\n", client_argument.url, ret);
     }
     // send a http Get request
+
     char request[8192];
     sprintf(request,
             "GET / HTTP/1.1\r\n"
