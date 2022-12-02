@@ -1,0 +1,21 @@
+url :https://mariadb.com/docs/ent/security/data-in-transit-encryption/create-self-signed-certificates-keys-openssl/
+
+
+openssl genrsa 4096 > ca-key.pem
+
+
+openssl req -new -x509 -nodes -days 365 \
+   -key ca-key.pem \
+   -out ca-cert.pem
+
+
+openssl req -newkey rsa:2048 -nodes -days 365 \
+   -keyout server-key.pem \
+   -out server-req.pem
+
+
+openssl x509 -req -days 365000 -set_serial 01 \
+   -in server-req.pem \
+   -out domain.crt \
+   -CA ca-cert.pem \
+   -CAkey ca-key.pem
