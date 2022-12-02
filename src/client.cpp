@@ -76,7 +76,7 @@ void argument_parse_client(int argc, char **argv, Client_argument *client_argume
             memset(domainName, '\0', 30 * sizeof(char));
             if (argv[i][4] == 's') {
                 client_argument->https = 1;
-                client_argument->rport = (char *)"443";
+                client_argument->rport = (char *)"4081";
                 int k = 8;
                 while (argv[i][k] != '\0') {
                     domainName[index] = argv[i][k];
@@ -483,6 +483,10 @@ int https_request(Client_argument client_argument) {
         printf("Unable to create a new SSL context structure.\n");
     }
     SSL_CTX_load_verify_locations(ctx, 0, "/etc/ssl/certs");
+    ret = SSL_CTX_load_verify_file(ctx, "rootCA.crt");
+    if (ret == 1) {
+        printf("rootCA.crt added to cert store.\n");
+    }
     if (!SSL_CTX_set_default_verify_paths(ctx)) {
         printf("Unable to set default verify paths.\n");
     }
@@ -537,7 +541,7 @@ int https_request(Client_argument client_argument) {
             "Connection: close\r\n\r\n", client_argument.url
     );
     SSL_write(ssl, request, strlen(request));
-
+    SSL_shutdown(ssl);
     // Receive and print out the HTTP response
     printf("--------RESPONSE RECEIVED----------\n");
     int len = 0;

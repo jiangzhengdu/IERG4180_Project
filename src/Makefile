@@ -28,7 +28,7 @@ obj = $(patsubst %.c,%.o,$(src))
 all:$(target1) $(target2)
 
 $(target1): threadpool.o server.o util.o
-	$(CC) $(CFLAGS) $^ -o $@ -lpthread -lcrypto
+	$(CC) $(CFLAGS) $^ -o $@ -lpthread -I/usr/lib/ -lssl  -lcrypto
 
 $(target2): client.o util.o
 	$(CC) $(CFLAGS) $^ -o $@ -Wall -lpthread  -I/usr/lib/ -lssl  -lcrypto

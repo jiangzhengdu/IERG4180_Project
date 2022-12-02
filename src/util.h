@@ -17,6 +17,12 @@
 #pragma comment(lib, "ws2_32.lib")
 #pragma warning(disable: 4996)
 #elif __linux__
+#include <openssl/pem.h>
+#include <openssl/conf.h>
+#include <openssl/x509v3.h>
+#ifndef OPENSSL_NO_ENGINE
+#include <openssl/engine.h>
+#endif
 # include <time.h>
 # include <sys/types.h>
 # include <sys/socket.h>

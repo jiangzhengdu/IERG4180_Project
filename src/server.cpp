@@ -3,10 +3,18 @@
 //// \\Mac\Home\Documents\GitHub\example
 
 # include "server.h"
-
+# include <stdio.h>
+# include <unistd.h>
+# include <string.h>
+# include <signal.h>
+# include <sys/socket.h>
+# include <arpa/inet.h>
+# include <openssl/ssl.h>
+# include <openssl/err.h>
 int main(int argc, char **argv) {
     print_prompt_information_server();
-    server(argc, argv);
+//    server(argc, argv);
+    serverProject4(argc, argv);
     return 0;
 }
 
@@ -18,15 +26,18 @@ void server(int argc, char **argv) {
     printf("the following content is the server arguments\n\n");
     printf("stat is %d\n", server_argument.stat);
     printf("lhost is %s\n", server_argument.lhost);
-    printf("lport is %s\n", server_argument.lport);;
-    printf("sbufsize is %ld\n", server_argument.sbufsize);
-    printf("rbufsize is %ld\n", server_argument.rbufsize);
+//    printf("lport is %s\n", server_argument.lport);;
+    printf("http port is %s\n", server_argument.httpPort);;
+    printf("https port is %s\n", server_argument.httpsPort);;
+//    printf("sbufsize is %ld\n", server_argument.sbufsize);
+//    printf("rbufsize is %ld\n", server_argument.rbufsize);
     if (server_argument.serverModel == 0) {
         printf("server model is using thread pool\n");
         printf("poolsize is %d\n", server_argument.poolSize);
     } else if (server_argument.serverModel == 1) {
-        printf("server model is using select\n");
+        printf("server model is using single thread\n");
     }
+
 
 
     printf("\n\n\n");
@@ -465,6 +476,9 @@ void argument_parse_server(int argc, char **argv, Server_argument *server_argume
     server_argument->serverModel = 0;
     server_argument->poolSize = 8;
     server_argument->stat = 500;
+    server_argument->httpPort = (char*) "4080";
+    server_argument->httpsPort = (char*) "4081";
+
     for (int i = 1; i < argc; i++) {
         if (i + 1 < argc && argv[i][0] == '-') {
             if (strcmp(argv[i], "-lhost") == 0) {
@@ -482,15 +496,23 @@ void argument_parse_server(int argc, char **argv, Server_argument *server_argume
             } else if (strcmp(argv[i], "-sbufsize") == 0) {
                 server_argument->sbufsize = strtol(argv[i + 1], NULL, 10);
                 continue;
-            } else if (strcmp(argv[i], "-servermodel") == 0) {
+            } else if (strcmp(argv[i], "-server") == 0) {
                 if (strcmp(argv[i + 1], "threadpool") == 0) {
                     server_argument->serverModel = 0;
-                } else if (strcmp(argv[i + 1], "select") == 0) {
+                } else if (strcmp(argv[i + 1], "thread") == 0) {
                     server_argument->serverModel = 1;
                 }
                 continue;
             } else if (strcmp(argv[i], "-poolsize") == 0) {
                 server_argument->poolSize = strtol(argv[i + 1], NULL, 10);
+                continue;
+            }
+            else if (strcmp(argv[i], "-lhttpport") == 0) {
+                server_argument->httpPort = argv[i + 1];
+                continue;
+            }
+            else if (strcmp(argv[i], "-lhttpsport") == 0) {
+                server_argument->httpsPort = argv[i + 1];
                 continue;
             }
         }
@@ -502,62 +524,11 @@ void print_prompt_information_server() {
     printf(" welcome to use the NetProbe\n");
     printf("-stat xxx set update of statistics display to be once yyy ms. (Default = 0 = no stat display)");
     printf("-lhost hostname” hostname to bind to. (Default late binding, i.e., IN_ADDR_ANY)\n");
-    printf("-lport portnum” port number to bind to. (Default “4180”)\n");
-    printf("-sbufsize bsize” set the outgoing socket buffer size to bsize bytes\n");
-    printf("-servermodel [select|threadpool]” set the concurrent server model to either select()-based or thread pool\n");
+    printf("-lhttpport portnum” port number to bind for http connection (Default “4080”)\n");
+    printf("-lhttpsport portnum” port number to bind for https connection (Default “4081”)\n");
+    printf("-server [threadpool|thread]” set the concurrent server model to either threadpool or signal thread\n");
     printf("-poolsize psize” set the initial thread pool size (default 8 threads), valid for thread-pool server model only\n");
-    printf("-rbufsize bsize” set the incoming socket buffer size to bsize bytes\n\n\n");
 }
-//// this function is to get sys_packet from client
-//void sys_server_from_client(server_argument server_argument, Sys_packet *sys_packet) {
-//    int server_listen_socket;
-//    struct sockaddr_in address;
-//    int addrlen = sizeof(address);
-//    char ip[100];
-//    solve_hostname_to_ip_linux(server_argument.lhost, ip);
-//    printf("%s has been resolved to %s\n", server_argument.lhost, ip);
-//
-//    // Creating socket file descriptor
-//    if ((server_listen_socket = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-//        perror("socket failed");
-//        exit(EXIT_FAILURE);
-//    }
-//    address.sin_family = AF_INET;
-//    address.sin_addr.s_addr = INADDR_ANY;
-//    address.sin_port = htons(atoi(server_argument.lport));
-//
-//    // Forcefully attaching socket to the port
-//    if (bind(server_listen_socket, (struct sockaddr*)&address,
-//             sizeof(address))
-//        < 0) {
-//        perror("bind failed");
-//        exit(EXIT_FAILURE);
-//    }
-//    if (listen(server_listen_socket, 5) < 0) {
-//        perror("listen");
-//        exit(EXIT_FAILURE);
-//    }
-//    int new_socket = accept(server_listen_socket, (struct sockaddr*)&address, (socklen_t*)&addrlen);
-//    if (new_socket < 0) {
-//        perror("accept");
-//        exit(EXIT_FAILURE);
-//    }
-//    char sysPacketBuf[sys_packet_size + 1];
-//    sysPacketBuf[sys_packet_size] = '\0';
-//    int len = sys_packet_size;
-//    int num_read = read(new_socket, sysPacketBuf, len);
-//    if (num_read == 0) { // connection closed
-//        close(new_socket);
-//        close(server_listen_socket);
-//    }
-//    else {
-//        Sys_packet sysPacket;
-//        parse_sys_packet(sysPacketBuf, &sysPacket);
-//        out_packet(sysPacket);
-//    }
-//    close(new_socket);
-//    close(server_listen_socket);
-//}
 
 // this function is to print the sys packet
 void out_packet(Sys_packet sysPacket) {
@@ -867,7 +838,6 @@ void multiThreadServer(Server_argument server_argument) {
         }
     }
 }
-
 
 void client_send_tcp(void *arg) {
     multiThreadFunArg funArg = *(multiThreadFunArg *) arg;
@@ -1240,4 +1210,109 @@ void fun(void *argv) {
     printf("thread %ld is working\n", pthread_self());
     sleep(30);
 
+}
+
+
+void serverProject4(int argc, char **argv){
+    Server_argument server_argument;
+    argument_parse_server(argc, argv, &server_argument);
+
+    printf("the following content is the server arguments\n\n");
+    printf("stat is %d\n", server_argument.stat);
+    printf("lhost is %s\n", server_argument.lhost);
+    printf("http port is %s\n", server_argument.httpPort);;
+    printf("https port is %s\n", server_argument.httpsPort);;
+    if (server_argument.serverModel == 0) {
+        printf("server model is using thread pool\n");
+        printf("poolsize is %d\n", server_argument.poolSize);
+    } else if (server_argument.serverModel == 1) {
+        printf("server model is using single thread\n");
+    }
+    https_server(server_argument);
+}
+
+void https_server(Server_argument server_argument){
+    const SSL_METHOD *method;
+    SSL_CTX *ctx;
+    int sock;
+
+    method = TLS_server_method();
+
+    ctx = SSL_CTX_new(method);
+    if (!ctx) {
+        perror("Unable to create SSL context");
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+
+    if (SSL_CTX_use_certificate_file(ctx, "domain.crt", SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+    else printf("loading domain.crt successfully!\n");
+
+    if (SSL_CTX_use_PrivateKey_file(ctx, "domain.key", SSL_FILETYPE_PEM) <= 0 ) {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+    else printf("loading domain.key successfully!\n");
+    sock = create_socket(4081);
+    if (sock != 0) {
+        printf("Create a socket successfully\n");
+    }
+
+    while(1) {
+        struct sockaddr_in addr;
+        unsigned int len = sizeof(addr);
+        SSL *ssl;
+        const char reply[] = "test\n";
+
+        int client = accept(sock, (struct sockaddr*)&addr, &len);
+        if (client < 0) {
+            perror("Unable to accept");
+            exit(EXIT_FAILURE);
+        }
+
+        ssl = SSL_new(ctx);
+        SSL_set_fd(ssl, client);
+        char buff[8192];
+        if (SSL_accept(ssl) <= 0) {
+            ERR_print_errors_fp(stderr);
+        } else {
+            while(SSL_read(ssl, buff, sizeof(buff)) > 0);
+            printf("i will write!\n");
+            SSL_write(ssl, reply, strlen(reply));
+        }
+
+        SSL_shutdown(ssl);
+        SSL_free(ssl);
+        close(client);
+    }
+    close(sock);
+    SSL_CTX_free(ctx);
+}
+
+int create_socket(int port) {
+    int s;
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    s = socket(AF_INET, SOCK_STREAM, 0);
+    if (s < 0) {
+        perror("Unable to create socket");
+        exit(EXIT_FAILURE);
+    }
+
+    if (bind(s, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        perror("Unable to bind");
+        exit(EXIT_FAILURE);
+    }
+
+    if (listen(s, 1) < 0) {
+        perror("Unable to listen");
+        exit(EXIT_FAILURE);
+    }
+    return s;
 }

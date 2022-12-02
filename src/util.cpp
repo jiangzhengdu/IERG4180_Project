@@ -110,8 +110,7 @@ double calculate_average_value(double *list, int n) {
     }
     if (validNum != 0) {
         return sum / validNum;
-    }
-    else {
+    } else {
         return 0;
     }
 }
@@ -190,44 +189,6 @@ int get_free_port() {
 #endif
 
 }
-
-//int get_free_port() {
-//    SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
-//    if (sock < 0) {
-//        printf("socket error\n");
-//        return 0;
-//    }
-//    printf("Opened %d\n", sock);
-//
-//    struct sockaddr_in serv_addr;
-//    memset((char *) &serv_addr, 0, sizeof(serv_addr));
-//    serv_addr.sin_family = AF_INET;
-//    serv_addr.sin_addr.s_addr = INADDR_ANY;
-//    serv_addr.sin_port = 0;
-//    if (bind(sock, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0) {
-////        if(errno == EADDRINUSE) {
-////            printf("the port is not available. already to other process\n");
-////            return 0;
-////        } else {
-////            printf("could not bind to process (%d) %s\n", errno, strerror(errno));
-////            return 0;
-////        }
-//        return 0;
-//    }
-//    int len = sizeof(serv_addr);
-//    if (getsockname(sock, (struct sockaddr *) &serv_addr, &len) == -1) {
-//        perror("getsockname");
-//        return 0;
-//    }
-//    //printf("port number %d\n", ntohs(serv_addr.sin_port));
-//    if (closesocket(sock) < 0) {
-//        printf("did not close: %s\n", strerror(errno));
-//        return 0;
-//    }
-//    return ntohs(serv_addr.sin_port);
-//}
-//
-
 
 // this function is to parse sys_packet_buf to struct sys_packet
 void parse_sys_packet(const char *sys_packet_buf, Sys_packet *sys_packet) {
@@ -331,34 +292,6 @@ int get_ip(char *outip) {
 #endif
 }
 
-// this function is to get ip in win
-//int get_ip(char * outip)
-//{
-//    char ac[80];
-//    if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR) {
-//        std ::cerr << "Error " << WSAGetLastError() <<
-//                   " when getting local host name." << std ::endl;
-//        return 1;
-//    }
-//    //std :: cout << "Host name is " << ac << "." << std ::endl;
-//
-//    struct hostent *phe = gethostbyname(ac);
-//    if (phe == 0) {
-//        std :: cerr << "Yow! Bad host lookup." << std ::endl;
-//        return 1;
-//    }
-//
-//    for (int i = 0; phe->h_addr_list[i] != 0; ++i) {
-//        struct in_addr addr;
-//        memcpy(&addr, phe->h_addr_list[i], sizeof(struct in_addr));
-//        strcpy(outip, inet_ntoa(addr));
-//        std ::cout << "Address " << i << ": " << inet_ntoa(addr) << std ::endl;
-//        break;
-//    }
-//
-//    return 0;
-//}
-
 // this function is for tcp recv
 // return 1 if the socket should be closed
 int tcp_recv(int socket, int pktsize,
@@ -384,10 +317,9 @@ int tcp_recv(int socket, int pktsize,
                 if (ret == 0) {
                     close_socket = 1;
                     flag_exit = 1; // peer close
-               //     printf("recv 0\n");
+                    //     printf("recv 0\n");
                     break;
-                }
-                else {
+                } else {
 //                    printf("recv data is %d\n", ret);
                     byte_recieve = byte_recieve + ret;
                 }
@@ -406,7 +338,7 @@ int tcp_recv(int socket, int pktsize,
         double time_cost = ((double) current_clock - (double) (*previous_clock)) / CLOCKS_PER_SEC;
 //        printf("have spend %f\n",time_cost);
 #ifdef __linux__
-//        time_cost*= 1000;
+        //        time_cost*= 1000;
 #endif
 //        printf("time_cost is %f\n", time_cost);
         inter_arrival_list[*cum_packet_number] = time_cost * 1000;
@@ -430,7 +362,7 @@ int tcp_recv(int socket, int pktsize,
 //        }
 
         if ((*cum_time_cost) * 1000 >= stat) {
-          //  printf("should show\n");
+            //  printf("should show\n");
             double throughput = ((*cum_bytes_recv) * 8) / ((*cum_time_cost) * 1000000);
             double jitter = calculate_average_value(J_i_list, *cum_packet_number);
             if (using_select != 1)
@@ -487,7 +419,7 @@ int tcp_send(int socket, int pktsize, int *left_pktnum, int pktnum, int pktrate,
                 if (ret > 0) {
                     bytes_sent = bytes_sent + ret;
                 } else {
-                   // printf("Send stop function fail, with error : %d\n", ret);
+                    // printf("Send stop function fail, with error : %d\n", ret);
                     //sleep(1);
                     return 1;
                 }
@@ -613,17 +545,16 @@ int udp_recv(int socket, int pktsize, clock_t *previous_clock, double *inter_arr
             }
             *previous_SN = curren_SN;
             current_clock = clock();
-           // printf("current clock is %f and previous clock is %f\n",(double) current_clock, (double) (*previous_clock));
+            // printf("current clock is %f and previous clock is %f\n",(double) current_clock, (double) (*previous_clock));
             double time_cost = ((double) current_clock - (double) (*previous_clock)) / CLOCKS_PER_SEC;
             inter_arrival_list[*cum_packet_number] = time_cost * 1000;
             (*cum_packet_number)++;
             double D = calculate_average_value(inter_arrival_list, *cum_packet_number);
-            if((*cum_packet_number) > 0) {
+            if ((*cum_packet_number) > 0) {
                 J_i_list[*cum_packet_number - 1] = fabs(time_cost * 1000 - D);
-               // printf("answer is D is %f timecost is %f fabs is %f\n", D, time_cost,fabs(time_cost * 1000 - D));
-               // Sleep(100000);
-            }
-            else {
+                // printf("answer is D is %f timecost is %f fabs is %f\n", D, time_cost,fabs(time_cost * 1000 - D));
+                // Sleep(100000);
+            } else {
                 J_i_list[0] = 0;
             }
             *previous_clock = current_clock;
@@ -698,9 +629,9 @@ int InitializeWinsock() {
 
 // server response to client using udp, first recv a packet then send a packet
 int server_response_udp(int readSocket, struct sockaddr_in client_address, int client_port) {
-  //  int port =client_address.sin_port;
-   // printf("server response udp port is %d\n", port);
-   // sleep(20);
+    //  int port =client_address.sin_port;
+    // printf("server response udp port is %d\n", port);
+    // sleep(20);
     struct sockaddr_in server_address;
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(client_port);
@@ -717,13 +648,13 @@ int server_response_udp(int readSocket, struct sockaddr_in client_address, int c
     int sendSocket = socket(AF_INET, SOCK_DGRAM, 0);
     int ret = sendto(sendSocket, buf, 15, 0, (struct sockaddr *) &client_address, sizeof(client_address));
     if (ret != -1) {
-       // printf("server send response udp %d\n", ret);
-      //  sleep(20);
+        // printf("server send response udp %d\n", ret);
+        //  sleep(20);
         free(buf);
         return 0;
     } else {
         printf("Sendto fail, with error : %d\n", ret);
-       // sleep(10);
+        // sleep(10);
         free(buf);
         return 1;
     }
@@ -731,7 +662,8 @@ int server_response_udp(int readSocket, struct sockaddr_in client_address, int c
 }
 
 // client response to client using udp, first send a packet then recv a packet
-int client_response_udp(int readSocket, struct sockaddr_in client_address, Client_argument client_argument, struct sockaddr_in server_address) {
+int client_response_udp(int readSocket, struct sockaddr_in client_address, Client_argument client_argument,
+                        struct sockaddr_in server_address) {
     printf("inside client_response udp\n");
 #ifdef __linux__
     int writeSocket = socket(AF_INET, SOCK_DGRAM, 0);
@@ -741,7 +673,7 @@ int client_response_udp(int readSocket, struct sockaddr_in client_address, Clien
 //    int bind_res = bind(readSocket, (struct sockaddr *) &client_address,
 //                   sizeof(client_address));
 //    if(bind_res == -1) printf("bind error\n");
-   // printf("binding with %s port %d\n", ip, free_port);
+    // printf("binding with %s port %d\n", ip, free_port);
     fd_set fdReadSet;
     fd_set fdWriteSet;
     FD_ZERO(&fdReadSet);
@@ -755,65 +687,65 @@ int client_response_udp(int readSocket, struct sockaddr_in client_address, Clien
     previous_clock = clock();
     double cum_time_cost = 0;
     double cum_time_cost_session = 0;
-    double* time_arr =  (double *)malloc(Jitter_max*sizeof(double));
+    double *time_arr = (double *) malloc(Jitter_max * sizeof(double));
     memset(time_arr, 0, Jitter_max * sizeof(double));
-    double* jitterList = (double *)malloc(Jitter_max*sizeof(double));
+    double *jitterList = (double *) malloc(Jitter_max * sizeof(double));
     memset(jitterList, 0, Jitter_max * sizeof(double));
-    double* previousSendTime = (double *)malloc(Jitter_max*sizeof(double));
+    double *previousSendTime = (double *) malloc(Jitter_max * sizeof(double));
     memset(previousSendTime, 0, Jitter_max * sizeof(double));
     int res = 0;
     double single_iter_response_threshold = pktrate * ((double) stat / 1000);
     int max_socket = readSocket > writeSocket ? readSocket : writeSocket;
     FD_SET(writeSocket, &fdWriteSet);
-    while(true) {
+    while (true) {
         FD_SET(readSocket, &fdReadSet);
         FD_SET(writeSocket, &fdWriteSet);
         if ((res = select(max_socket + 1, &fdReadSet, &fdWriteSet, NULL, NULL)) <= 0) {
             printf("res is wrong %d\n", res);
             break;
         }
-      //  printf("after select\n");
+        //  printf("after select\n");
         if (FD_ISSET(writeSocket, &fdWriteSet)) {
 //            printf("in the write\n");
             if ((response_number_index < pktnum) || pktnum == 0) {
                 if (response_number_index < single_iter_response_threshold) {
-                  //  printf("1\n");
+                    //  printf("1\n");
                     char *message = (char *) malloc(16 * sizeof(char));
                     message = generate_message(15, response_number_index);
-                  //  printf("message is %s\n", message);
-                  //  printf("server ip is %s\n", ntohl(server_address.sin_addr.s_addr));
-                //    printf("server port is %d\n", server_address.sin_port);
+                    //  printf("message is %s\n", message);
+                    //  printf("server ip is %s\n", ntohl(server_address.sin_addr.s_addr));
+                    //    printf("server port is %d\n", server_address.sin_port);
                     int ret = sendto(writeSocket, message, 15, 0, (struct sockaddr *) &server_address,
                                      sizeof(server_address));
-                 //   printf("have send\n");
+                    //   printf("have send\n");
                     if (ret < 0) {
                         printf("Send function fail, with error : %d\n", ret);
                     }
-                    previousSendTime[response_number_index] = (double)clock();
+                    previousSendTime[response_number_index] = (double) clock();
                     response_number_index++;
                     free(message);
                 }
             }
         }
-       // printf("after write\n");
+        // printf("after write\n");
         if (FD_ISSET(readSocket, &fdReadSet)) {
 //            printf("in the read\n");
-            char* buf = (char *)malloc(16 * sizeof(char));
+            char *buf = (char *) malloc(16 * sizeof(char));
             memset(buf, '\0', 16 * sizeof(char));
             socklen_t len = sizeof(client_address);
             int recv_size = recvfrom(readSocket, buf, 15, 0, (struct sockaddr *) &client_address, &len);
 //            printf("recv_size is %d\n",recv_size);
             int curren_SN = get_sequence_number(buf);
-            time_arr[curren_SN] = ((double)clock() - (double)previousSendTime[curren_SN]) / CLOCKS_PER_SEC;
+            time_arr[curren_SN] = ((double) clock() - (double) previousSendTime[curren_SN]) / CLOCKS_PER_SEC;
             double D = calculate_average_value(time_arr, curren_SN);
             if (curren_SN > 0)
-                jitterList[curren_SN - 1] =  fabs(time_arr[curren_SN] - D);
+                jitterList[curren_SN - 1] = fabs(time_arr[curren_SN] - D);
             else {
                 jitterList[0] = 0.0;
             }
             free(buf);
         }
-       // printf("after read\n");
+        // printf("after read\n");
 
         current_clock = clock();
         double time_cost = ((double) current_clock - (double) previous_clock) / CLOCKS_PER_SEC;
@@ -931,9 +863,9 @@ int client_response_tcp(struct sockaddr_in server_address, Client_argument clien
     previous_clock = clock();
     double cum_time_cost = 0;
     double cum_time_cost_session = 0;
-    double* time_arr =  (double *)malloc(Jitter_max*sizeof(double));
+    double *time_arr = (double *) malloc(Jitter_max * sizeof(double));
     memset(time_arr, 0, Jitter_max * sizeof(double));
-    double* jitterList = (double *)malloc(Jitter_max*sizeof(double));
+    double *jitterList = (double *) malloc(Jitter_max * sizeof(double));
     memset(jitterList, 0, Jitter_max * sizeof(double));
     double single_iter_response_threshold = pktrate * ((double) stat / 1000);
     while ((response_number_index < pktnum) || pktnum == 0) {
@@ -958,7 +890,7 @@ int client_response_tcp(struct sockaddr_in server_address, Client_argument clien
                 } else {
                     printf("Send function fail, with error : %d\n", ret);
                     return 0;
-                   // sleep(3);
+                    // sleep(3);
                 }
             }
             clock_t temp = clock();
@@ -976,12 +908,12 @@ int client_response_tcp(struct sockaddr_in server_address, Client_argument clien
                     }
                 }
             }
-            time_arr[response_number_index] = ((double)clock() - (double)temp) / CLOCKS_PER_SEC;
+            time_arr[response_number_index] = ((double) clock() - (double) temp) / CLOCKS_PER_SEC;
 //            if (time_arr[response_number_index] > 0) printf("1");
 //            printf("%d is %f\n",response_number_index, time_arr[response_number_index]);
             double D = calculate_average_value(time_arr, response_number_index);
             if (response_number_index > 0)
-            jitterList[response_number_index - 1] =  fabs(time_arr[response_number_index] - D);
+                jitterList[response_number_index - 1] = fabs(time_arr[response_number_index] - D);
             else {
                 jitterList[0] = 0.0;
             }
@@ -1010,7 +942,8 @@ int client_response_tcp(struct sockaddr_in server_address, Client_argument clien
             }
             double jitter = calculate_average_value(jitterList, response_number_index);
             printf("Sender: [Elapsed] %.2f ms, Replies [%d] Min [%.2fms] Max [%.2fms] Avg [%.2fms] Jitter [%.2fms]\n",
-                   cum_time_cost_session * 1000, response_number_index, min * 1000, max * 1000, sum / response_number_index * 1000, jitter * 1000);
+                   cum_time_cost_session * 1000, response_number_index, min * 1000, max * 1000,
+                   sum / response_number_index * 1000, jitter * 1000);
             cum_time_cost = 0;
             response_number_index = 0;
         }

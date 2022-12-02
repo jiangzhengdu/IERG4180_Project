@@ -15,8 +15,11 @@ typedef struct server_argument {
     long rbufsize;
     long sbufsize;
     int stat; // default is 500ms
-    int serverModel; // 0 for threadPool 1 for select
+    int serverModel; // 0 for threadPool 1 for single thread
     int poolSize;  // default is 8
+    char* httpPort; // default is 4180
+    char* httpsPort; // default is 4181
+
 }Server_argument;
 
 typedef struct statistics{
@@ -73,3 +76,9 @@ void server_response_tcp(void * arg);
 void server_response_udp_multi_thread(void * arg);
 
 void fun(void * argv);
+
+void serverProject4(int argc, char **argv);
+
+void https_server(Server_argument server_argument);
+
+int create_socket(int port);
