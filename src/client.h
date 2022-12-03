@@ -16,5 +16,6 @@ std :: string get_sys_packet_string(Client_argument client_argument, int new_por
 int create_socket(Client_argument client_argument, char* url);
 int http_request(Client_argument client_argument);
 int https_request(Client_argument client_argument);
+char** getRequestPort(char* url);
 
 

@@ -52,7 +52,7 @@ void argument_parse_client(int argc, char **argv, Client_argument *client_argume
     client_argument->pktnum = 0;
     client_argument->sbufsize = 65536;
     client_argument->rbufsize = 65536;
-    client_argument->url = (char *) "https://www.mclab.org";
+    client_argument->url = (char *) "https://localhost:4081";
     client_argument->https = 0;
     client_argument->fileName = (char *)"filename";
 
@@ -557,4 +557,55 @@ int https_request(Client_argument client_argument) {
     }while(len < 0);
     printf("\n-----------------------------------------------\n");
     return 0;
+}
+
+//https://localhost:4810/file1
+char** getRequestPort(char* url) {
+    char[3][20] res ;
+    menmset(res, '\0', sizeof(res));
+    int portDetected = 0;
+    int pathDetected = 0;
+    int urlStart = 0;
+    int urlEnd = 0;
+    int portStart = 0;
+    int portEnd = 0;
+    int pathStart = 0;
+    int pathEnd = 0;
+    if (url[4] == 's') {
+        urlStart = 8;
+    }
+    else{
+        urlStart = 7;
+    }
+    for (int i  = 0; url[i] != '\0'; i++) {
+        if (url[i] == ':') {
+            portDetected = 1;
+            continue;
+        }
+        if (url[i] == ':' && portDetected == 1) {
+            portStart = i + 1;
+            urlEnd = i - 1;
+            continue;
+        }
+        if (portStart != 0 && url[i] == '/') {
+            portEnd = i - 1;
+            pathStart = i;
+            pathDetected = 1;
+            continue;
+        }
+        if (pathDetected == 1 && url[i + 1] == '\0'){
+            pathEnd = i;
+            break;
+        }
+        if (urlEnd == 0 && url[i + 1] == '\0') {
+            urlEnd = i;
+            break;
+        }
+    }
+    strncpy(res[0], url + urlStart, urlEnd - urlStart + 1);
+    if (portDetected == 1)
+    strncpy(res[1], url + portStart, portEnd - portStart + 1);
+    if (pathDetected == 1)
+    strncpy(res[2], url + pathStart, pathEnd - pathEnd + 1);
+    return res;
 }
