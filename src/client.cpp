@@ -29,6 +29,7 @@ int client(int argc, char **argv) {
     printf("url is %s\n", client_argument.url);
     printf("filename is %s\n", client_argument.fileName);
     printf("\n\n\n");
+    return 0;
     if (client_argument.https == 0) {
         http_request(client_argument);
     }
@@ -74,28 +75,37 @@ void argument_parse_client(int argc, char **argv, Client_argument *client_argume
             int index = 0;
             char* domainName = (char *)malloc(30 *sizeof (char));
             memset(domainName, '\0', 30 * sizeof(char));
+            printf("i am here\n");
+            char** parseRet = getRequestInfo(argv[1]);
+            client_argument->url = parseRet[0];
+            if (parseRet[1][0] != '\0')
+            client_argument->rport = parseRet[1];
+            if (parseRet[2][0] != '\0')
+            client_argument->fileName = parseRet[2];
             if (argv[i][4] == 's') {
                 client_argument->https = 1;
-                client_argument->rport = (char *)"4081";
-                int k = 8;
-                while (argv[i][k] != '\0') {
-                    domainName[index] = argv[i][k];
-                    k++;
-                    index++;
-                }
+                if (parseRet[2][0] == '\0')
+                client_argument->rport = (char *)"443";
+//                int k = 8;
+//                while (argv[i][k] != '\0') {
+//                    domainName[index] = argv[i][k];
+//                    k++;
+//                    index++;
+//                }
             }
             else {
                 client_argument->https = 0;
+                if (parseRet[2][0] == '\0')
                 client_argument->rport = (char *)"80";
-                int k = 7;
-                while (argv[i][k] != '\0') {
-                    domainName[index] = argv[i][k];
-                    k++;
-                    index++;
-                }
+//                int k = 7;
+//                while (argv[i][k] != '\0') {
+//                    domainName[index] = argv[i][k];
+//                    k++;
+//                    index++;
+//                }
             }
 //            strncpy(client_argument->url, domainName, index);
-            client_argument->url = domainName;
+//            client_argument->url = domainName;
             continue;
         }
         if (i + 1 < argc && argv[i][0] == '-') {
@@ -407,9 +417,7 @@ std::string get_sys_packet_string(Client_argument client_argument, int out_new_p
 
 // this function is for create a socket for connect server
 int create_socket(Client_argument client_argument, char* url) {
-
     int sockfd;
-
     int port = atoi(client_argument.rport);
     struct sockaddr_in dest_addr;
     char* ip = (char*)malloc(20 * sizeof(char));
@@ -560,9 +568,14 @@ int https_request(Client_argument client_argument) {
 }
 
 //https://localhost:4810/file1
-char** getRequestPort(char* url) {
-    char[3][20] res ;
-    menmset(res, '\0', sizeof(res));
+char** getRequestInfo(char* url) {
+//    char res [3][20] = {0};
+    char ** res = (char **)malloc(3 *  sizeof(int));
+    for (int i = 0; i < 3; i++){
+        res[i] = (char *)malloc(20 * sizeof(char));
+        memset(res[i], '\0', 20 *  sizeof(char));
+    }
+
     int portDetected = 0;
     int pathDetected = 0;
     int urlStart = 0;
@@ -578,7 +591,8 @@ char** getRequestPort(char* url) {
         urlStart = 7;
     }
     for (int i  = 0; url[i] != '\0'; i++) {
-        if (url[i] == ':') {
+//        printf("url[%d] is %c \n", i, url[i]);
+        if (url[i] == ':' && portDetected == 0) {
             portDetected = 1;
             continue;
         }
@@ -602,10 +616,17 @@ char** getRequestPort(char* url) {
             break;
         }
     }
+
+//    printf("urlStart is %d  urlEnd is %d\n", urlStart, urlEnd);
+//    printf("portStart is %d  portEnd is %d\n", portStart, portEnd);
+//    printf("pathStart is %d  pathEnd is %d\n", pathStart, pathEnd);
     strncpy(res[0], url + urlStart, urlEnd - urlStart + 1);
+//    printf("url is %s\n", res[0]);
     if (portDetected == 1)
     strncpy(res[1], url + portStart, portEnd - portStart + 1);
+//    printf("port is %s\n", res[1]);
     if (pathDetected == 1)
-    strncpy(res[2], url + pathStart, pathEnd - pathEnd + 1);
+    strncpy(res[2], url + pathStart, pathEnd - pathStart + 1);
+//    printf("path is %s\n", res[2]);
     return res;
 }
