@@ -11,6 +11,7 @@
 # include <arpa/inet.h>
 # include <openssl/ssl.h>
 # include <openssl/err.h>
+
 int main(int argc, char **argv) {
     print_prompt_information_server();
     serverProject4(argc, argv);
@@ -36,7 +37,6 @@ void server(int argc, char **argv) {
     } else if (server_argument.serverModel == 1) {
         printf("server model is using single thread\n");
     }
-
 
 
     printf("\n\n\n");
@@ -166,7 +166,8 @@ void server(int argc, char **argv) {
             if (FD_ISSET(socketHandles[i], &fdReadSet)) { // if the socket [i] is active for read
                 if (i == 0) { // read the sys packet and first check the socket for accept()
                     // printf("need accept\n");
-                    int new_socket = accept(server_listen_socket, (struct sockaddr *) &address, (socklen_t *) &addrlen);
+                    int new_socket = accept(server_listen_socket, (struct sockaddr *) &address,
+                                            (socklen_t * ) & addrlen);
                     // printf("accept one\n");
                     if (new_socket < 0) {
                         perror("accept");
@@ -184,7 +185,7 @@ void server(int argc, char **argv) {
                             parse_sys_packet(sysPacketBuf, &sysPacket);
                             // set socket config list
                             socketConfigList[j] = sysPacket;
-                          //  out_packet(sysPacket);
+                            //  out_packet(sysPacket);
                             // set statisticsList
                             init_statistics(&statisticsList[j]);
                             statisticsList[j].pktrate = sysPacket.pktrate;
@@ -242,7 +243,8 @@ void server(int argc, char **argv) {
                                 write(new_socket, free_port_buf, 5);
                                 response_udp_server_binding_ports_list[j] = free_port;
                                 socketTcpForUdp[j] = new_socket;
-                                if (sysPacket.proto ==  0) { // if response using udp, then just a normal udp socket binding the new port
+                                if (sysPacket.proto ==
+                                    0) { // if response using udp, then just a normal udp socket binding the new port
                                     printf("[%d] [Connected] connect to %s port %d client response using udp via server port %d %d Bps\n",
                                            j, sysPacket.client_ip, address.sin_port, free_port, sysPacket.pktrate);
                                     int new_udp_socket = socket(AF_INET, SOCK_DGRAM, 0);
@@ -251,7 +253,7 @@ void server(int argc, char **argv) {
                                     new_udp_socket_server_address.sin_family = AF_INET;
                                     new_udp_socket_server_address.sin_port = htons(free_port);
                                     new_udp_socket_server_address.sin_addr.s_addr = htonl(INADDR_ANY);
-                                  //  new_udp_socket_server_address.sin_addr.s_addr = inet_addr(ip);
+                                    //  new_udp_socket_server_address.sin_addr.s_addr = inet_addr(ip);
                                     int res = bind(new_udp_socket, (struct sockaddr *) &new_udp_socket_server_address,
                                                    sizeof(new_udp_socket_server_address));
                                     if (res < 0) {
@@ -350,15 +352,16 @@ void server(int argc, char **argv) {
                         response_socket_udp_address.sin_family = AF_INET;
                         //printf("socket configList port is %d\n", socketConfigList[i].client_port);
                         response_socket_udp_address.sin_port = htons(socketConfigList[i].client_port);
-                       // printf("should recv free port is %d\n", response_udp_server_binding_ports_list[i]);
+                        // printf("should recv free port is %d\n", response_udp_server_binding_ports_list[i]);
                         response_socket_udp_address.sin_addr.s_addr = inet_addr(socketConfigList[i].client_ip);
-                      //  printf("recv data, the server ip is %s port is %d\n",socketConfigList[i].client_ip,socketConfigList[i].client_port);
-                        server_response_udp(socketHandles[i], response_socket_udp_address, response_udp_server_binding_ports_list[i]);
+                        //  printf("recv data, the server ip is %s port is %d\n",socketConfigList[i].client_ip,socketConfigList[i].client_port);
+                        server_response_udp(socketHandles[i], response_socket_udp_address,
+                                            response_udp_server_binding_ports_list[i]);
                         //printf("send a udp response !\n");
                     }
                     if (socketConfigList[i].mode == 2 && socketConfigList[i].proto == 1) {// server send response tcp
                         int new_tcp_response_socket = accept(socketHandles[i], (struct sockaddr *) &address,
-                                                             (socklen_t *) &addrlen);
+                                                             (socklen_t * ) & addrlen);
                         int yes = 1;
                         int result = setsockopt(new_tcp_response_socket, IPPROTO_TCP, TCP_NODELAY, (char *) &yes,
                                                 sizeof(int));
@@ -386,7 +389,7 @@ void server(int argc, char **argv) {
             if (FD_ISSET(socketTcpForUdp[i], &fdReadSet)) {
                 socketValid[i] = false;
                 numActiveSockets--;
-               // printf("go to the socket for tcp\n");
+                // printf("go to the socket for tcp\n");
                 if (socketConfigList[i].mode == 0) {
                     printf("[%d] [Stop] client send data stop to %s port %d using udp\n", i,
                            socketConfigList[i].client_ip, socketConfigList[i].client_port);
@@ -476,8 +479,8 @@ void argument_parse_server(int argc, char **argv, Server_argument *server_argume
     server_argument->poolSize = 8;
     server_argument->socket = 0;
     server_argument->stat = 500;
-    server_argument->httpPort = (char*) "4080";
-    server_argument->httpsPort = (char*) "4081";
+    server_argument->httpPort = (char *) "4080";
+    server_argument->httpsPort = (char *) "4081";
 
     for (int i = 1; i < argc; i++) {
         if (i + 1 < argc && argv[i][0] == '-') {
@@ -506,12 +509,10 @@ void argument_parse_server(int argc, char **argv, Server_argument *server_argume
             } else if (strcmp(argv[i], "-poolsize") == 0) {
                 server_argument->poolSize = strtol(argv[i + 1], NULL, 10);
                 continue;
-            }
-            else if (strcmp(argv[i], "-lhttpport") == 0) {
+            } else if (strcmp(argv[i], "-lhttpport") == 0) {
                 server_argument->httpPort = argv[i + 1];
                 continue;
-            }
-            else if (strcmp(argv[i], "-lhttpsport") == 0) {
+            } else if (strcmp(argv[i], "-lhttpsport") == 0) {
                 server_argument->httpsPort = argv[i + 1];
                 continue;
             }
@@ -654,7 +655,7 @@ void multiThreadServer(Server_argument server_argument) {
         // process the active sockets
         // read the sys packet and first check the socket for accept()
         if (ret > 0) {
-            int new_socket = accept(server_listen_socket, (struct sockaddr *) &address, (socklen_t *) &addrlen);
+            int new_socket = accept(server_listen_socket, (struct sockaddr *) &address, (socklen_t * ) & addrlen);
 //            printf("accept one\n");
             if (new_socket < 0) {
                 perror("accept");
@@ -1101,7 +1102,7 @@ void server_response_tcp(void *arg) {
         }
         if (FD_ISSET(server_listen_response_socket, &fdReadSet)) {
             int new_tcp_response_socket = accept(server_listen_response_socket, (struct sockaddr *) &response_address,
-                                                 (socklen_t *) &addrlen);
+                                                 (socklen_t * ) & addrlen);
             addTcpNum(pool);
             int yes = 1;
             int result = setsockopt(new_tcp_response_socket, IPPROTO_TCP, TCP_NODELAY, (char *) &yes,
@@ -1116,7 +1117,7 @@ void server_response_tcp(void *arg) {
             if (num_read != 15) {
 //                printf("[%d] [Stopped] response to %s port %d client send using tcp\n", i,
 //                       inet_ntoa(address.sin_addr), address.sin_port);
-                            printf("server receive response wrong! only %d\n", num_read);
+                printf("server receive response wrong! only %d\n", num_read);
             }
             write(new_tcp_response_socket, recvBuf, 15);
             free(recvBuf);
@@ -1145,8 +1146,8 @@ void server_response_udp_multi_thread(void *arg) {
     write(sysTcpSocket, free_port_buf, 5);
     int my_socket = socket(AF_INET, SOCK_DGRAM, 0);
     struct sockaddr_in server_address, client_address;
-    memset(&server_address, 0, sizeof( struct sockaddr_in));
-    memset(&client_address, 0, sizeof( struct sockaddr_in));
+    memset(&server_address, 0, sizeof(struct sockaddr_in));
+    memset(&client_address, 0, sizeof(struct sockaddr_in));
     server_address.sin_family = AF_INET;
     server_address.sin_port = htons(free_port);
     server_address.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -1154,7 +1155,7 @@ void server_response_udp_multi_thread(void *arg) {
     client_address.sin_port = htons(sysPacket.client_port);
     client_address.sin_addr.s_addr = inet_addr(sysPacket.client_ip);
 
-    int bind_res = bind(my_socket, (struct sockaddr*)&server_address, sizeof(server_address));
+    int bind_res = bind(my_socket, (struct sockaddr *) &server_address, sizeof(server_address));
     if (bind_res == -1) {
         printf("bind error\n");
         deleteTcpNum(pool);
@@ -1212,7 +1213,7 @@ void fun(void *argv) {
 
 }
 
-void serverProject4(int argc, char **argv){
+void serverProject4(int argc, char **argv) {
     Server_argument server_argument;
     argument_parse_server(argc, argv, &server_argument);
 
@@ -1287,18 +1288,25 @@ void serverProject4(int argc, char **argv){
         // process the active sockets
         // read the sys packet and first check the socket for accept()
         if (ret > 0) {
-            if (FD_ISSET(socket_http_listen, &fdReadSet)) {
-                int new_http_socket = accept(socket_http_listen, (struct sockaddr *) &address, (socklen_t *) &addrlen);
-
-            }
             if (FD_ISSET(socket_https_listen, &fdReadSet)) {
-                int new_https_socket = accept(socket_https_listen, (struct sockaddr *) &address, (socklen_t *) &addrlen);
-                int *funArg = (int *)malloc(sizeof(int));
+                int new_https_socket = accept(socket_https_listen, (struct sockaddr *) &address,
+                                              (socklen_t * ) & addrlen);
+                int *funArg = (int *) malloc(sizeof(int));
                 memset(funArg, 0, sizeof(int));
                 *funArg = new_https_socket;
                 threadPoolAdd(pool, https_server, funArg);
                 httpsClientNum++;
             }
+            if (FD_ISSET(socket_http_listen, &fdReadSet)) {
+                int new_http_socket = accept(socket_http_listen, (struct sockaddr *) &address,
+                                             (socklen_t * ) & addrlen);
+                int *funArg = (int *) malloc(sizeof(int));
+                memset(funArg, 0, sizeof(int));
+                *funArg = new_http_socket;
+                threadPoolAdd(pool, http_server, funArg);
+                httpClientNum++;
+            }
+
         }
         current_clock = clock();
         double time_cost = ((double) current_clock - (double) previous_clock) / CLOCKS_PER_SEC;
@@ -1317,7 +1325,7 @@ void serverProject4(int argc, char **argv){
 //    https_server(server_argument);
 }
 
-void https_server(void *arg){
+void https_server(void *arg) {
     const SSL_METHOD *method;
     SSL_CTX *ctx;
     method = TLS_server_method();
@@ -1330,42 +1338,64 @@ void https_server(void *arg){
     if (SSL_CTX_use_certificate_file(ctx, "domain.crt", SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
-    }
-    else printf("loading domain.crt successfully!\n");
-    if (SSL_CTX_use_PrivateKey_file(ctx, "domain.key", SSL_FILETYPE_PEM) <= 0 ) {
+    } else printf("loading domain.crt successfully!\n");
+    if (SSL_CTX_use_PrivateKey_file(ctx, "domain.key", SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
-    }
-    else printf("loading domain.key successfully!\n");
-    int socket  = *(int *)arg;
+    } else printf("loading domain.key successfully!\n");
+    int socket = *(int *) arg;
 //        struct sockaddr_in addr;
 //        unsigned int len = sizeof(addr);
-        SSL *ssl;
-        const char reply[] = "test\n";
-        printf("the accept socket is %d\n", socket);
-//        int client = accept(sock, (struct sockaddr*)&addr, &len);
-//        if (client < 0) {
-//            perror("Unable to accept");
-//            exit(EXIT_FAILURE);
-//        }
-
-        ssl = SSL_new(ctx);
-        SSL_set_fd(ssl, socket);
-        char buff[8192];
-        if (SSL_accept(ssl) <= 0) {
-            ERR_print_errors_fp(stderr);
-        } else {
-            while(SSL_read(ssl, buff, sizeof(buff)) > 0);
-            printf("i will write!\n");
-            SSL_write(ssl, reply, strlen(reply));
-        }
-        SSL_shutdown(ssl);
-        SSL_free(ssl);
-        close(socket);
-        SSL_CTX_free(ctx);
+    SSL *ssl;
+    const char reply[] = "test\n";
+    printf("the accept socket is %d\n", socket);
+    ssl = SSL_new(ctx);
+    SSL_set_fd(ssl, socket);
+    char buff[8192];
+    if (SSL_accept(ssl) <= 0) {
+        ERR_print_errors_fp(stderr);
+    } else {
+        while (SSL_read(ssl, buff, sizeof(buff)) > 0);
+        printf("i will write!\n");
+        SSL_write(ssl, reply, strlen(reply));
+    }
+    SSL_shutdown(ssl);
+    SSL_free(ssl);
+    close(socket);
+    SSL_CTX_free(ctx);
 }
 
-void http_server(Server_argument server_argument){
+void http_server(void *arg) {
+    int socket = *(int *) arg;
+    const char reply[] = "test\n";
+    char request[1024];
+    sprintf(request,
+            "GET HTTP/1.1\r\n"
+            "Host: \r\n"
+            "Connection: close\r\n\r\n");
+    int len = 0;
+    int ret = 0;
+    struct timeval timeout_select;
+    timeout_select.tv_sec = 0;
+    timeout_select.tv_usec = 500 * 1000;
+    fd_set fdReadSet;
+    FD_ZERO(&fdReadSet);
+    FD_SET(socket, &fdReadSet);
+
+    do {
+        if ((ret = select(socket + 1, &fdReadSet, NULL, NULL, &timeout_select)) <= 0) {
+            FD_ZERO(&fdReadSet);
+            break;
+        }
+        FD_SET(socket, &fdReadSet);
+        char buff[2000];
+        len = read(socket, buff, sizeof(buff));
+        if (len > 0) fwrite(buff, len, 1, stdout);
+    } while (len > 0);
+
+    send(socket, reply, strlen(reply), 0);
+
+    close(socket);
 
 }
 
@@ -1383,7 +1413,7 @@ int create_socket(int port) {
         exit(EXIT_FAILURE);
     }
 
-    if (bind(s, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+    if (bind(s, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
         perror("Unable to bind");
         exit(EXIT_FAILURE);
     }

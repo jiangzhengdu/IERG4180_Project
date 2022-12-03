@@ -89,4 +89,6 @@ void serverProject4(int argc, char **argv);
 
 void https_server(void *arg);
 
+void http_server(void *arg);
+
 int create_socket(int port);
