@@ -436,21 +436,53 @@ int http_request(Client_argument client_argument) {
         printf("Successfully made the tcp connection to %s\n", client_argument.url);
     }
     char request[1024];
+//    sprintf(request,
+//            "GET / HTTP/1.1\r\n"
+//            "Host: %s\r\n"
+//            "Connection: close\r\n\r\n", client_argument.url
+//    );
+    if (strcmp(client_argument.filePath, "filepath") == 0) {
+        client_argument.filePath = (char*)"/";
+        printf("no filepath\n");
+    }
     sprintf(request,
-            "GET / HTTP/1.1\r\n"
+            "GET %s HTTP/1.1\r\n"
             "Host: %s\r\n"
-            "Connection: close\r\n\r\n", client_argument.url
+            "Connection: close\r\n\r\n", client_argument.filePath, client_argument.url
     );
+    printf("request is %s\n", request);
     send(sockfd, request, strlen(request), 0);
 
     // Receive and print out the HTTP response
     printf("--------RESPONSE RECEIVED----------\n");
     int len = 0;
-    do {
-        char buff[4500];
-        len = read(sockfd, buff, sizeof(buff));
-        if (len > 0) fwrite(buff, len, 1, stdout);
-    }while(len < 0);
+    int hasFileName = 0;
+    if (strcmp(client_argument.fileName, "filename") != 0){
+        hasFileName = 1;
+    }
+    if (hasFileName == 1) {
+        FILE *fp;
+        fp = fopen(client_argument.fileName, "w");
+        do {
+            char buff[2000];
+            len = read(sockfd, buff, sizeof(buff));
+            if (len > 0) fwrite(buff, len, 1, fp);
+        }while(len > 0);
+        fclose(fp);
+    }
+    else {
+        do {
+            char buff[2000];
+            len = read(sockfd, buff, sizeof(buff));
+            if (len > 0) fwrite(buff, len, 1, stdout);
+        }while(len > 0);
+    }
+//    do {
+//        char buff[4500];
+//        len = read(sockfd, buff, sizeof(buff));
+//        if (len > 0) fwrite(buff, len, 1, stdout);
+//    }while(len > 0);
+    close(sockfd);
     printf("\n-----------------------------------------------\n");
     return 0;
 }
@@ -546,11 +578,6 @@ int https_request(Client_argument client_argument) {
             "Connection: close\r\n\r\n", client_argument.filePath, client_argument.url
     );
     printf("request is %s\n", request);
-//    sprintf(request,
-//            "GET / HTTP/1.1\r\n"
-//            "Host: %s\r\n"
-//            "Connection: close\r\n\r\n", client_argument.url
-//    );
     SSL_write(ssl, request, strlen(request));
     SSL_shutdown(ssl);
     // Receive and print out the HTTP response
