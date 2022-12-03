@@ -1232,7 +1232,7 @@ void serverProject4(int argc, char **argv) {
     socket_https_listen = create_socket(atoi(server_argument.httpsPort));
     socket_http_listen = create_socket(atoi(server_argument.httpPort));
     if (socket_https_listen != 0 && socket_http_listen != 0) {
-        printf("Create a socket successfully\n");
+        printf("Create two sockets successfully\n");
     }
     int max_listen_socket = socket_https_listen > socket_http_listen ? socket_https_listen : socket_http_listen;
     ThreadPool *pool = NULL;
@@ -1253,7 +1253,6 @@ void serverProject4(int argc, char **argv) {
     int httpClientNum = 0;
     int httpsClientNum = 0;
     while (true) {
-//        printf("go to while\n");
         // set up the fd_set
         FD_ZERO(&fdReadSet);
         FD_SET(socket_https_listen, &fdReadSet);
@@ -1275,7 +1274,14 @@ void serverProject4(int argc, char **argv) {
                 int *funArg = (int *) malloc(sizeof(int));
                 memset(funArg, 0, sizeof(int));
                 *funArg = new_https_socket;
-                threadPoolAdd(pool, https_server, funArg);
+                if (server_argument.serverModel == 1) { // means the server using a single thread
+                    pthread_t thread1;
+                    if (pthread_create(&thread1, NULL, https_server_single_thread, funArg) != 0){
+                        printf("single thread create failed!\n");
+                    }
+                }
+                else
+                    threadPoolAdd(pool, https_server, funArg);
                 httpsClientNum++;
             }
             if (FD_ISSET(socket_http_listen, &fdReadSet)) {
@@ -1284,7 +1290,14 @@ void serverProject4(int argc, char **argv) {
                 int *funArg = (int *) malloc(sizeof(int));
                 memset(funArg, 0, sizeof(int));
                 *funArg = new_http_socket;
-                threadPoolAdd(pool, http_server, funArg);
+                if (server_argument.serverModel == 1) { // means the server using a single thread
+                    pthread_t thread1;
+                    if (pthread_create(&thread1, NULL, http_server_single_thread, funArg) != 0){
+                        printf("single thread create failed!\n");
+                    }
+                }
+                else
+                    threadPoolAdd(pool, http_server, funArg);
                 httpClientNum++;
             }
 
@@ -1303,7 +1316,6 @@ void serverProject4(int argc, char **argv) {
             httpsClientNum = 0;
         }
     }
-//    https_server(server_argument);
 }
 
 void https_server(void *arg) {
@@ -1342,8 +1354,6 @@ void https_server(void *arg) {
 //        struct sockaddr_in addr;
 //        unsigned int len = sizeof(addr);
     SSL *ssl;
-    const char reply[] = "test\n";
-    printf("the accept socket is %d\n", socket);
     ssl = SSL_new(ctx);
     SSL_set_fd(ssl, socket);
     char buff[8192];
@@ -1355,7 +1365,7 @@ void https_server(void *arg) {
             len = SSL_read(ssl, buff, sizeof(buff));
             if (len > 0 && haveReadFirstLine == 0) {
                 haveReadFirstLine = 1;
-                if (buff[4] == '/') {
+                if (buff[4] == '/' && buff[5] != ' ') {
                     hasFile = 1;
                     for (int i = 4; i < sizeof(buff); i++) {
                         if (buff[i + 1] == ' '){
@@ -1363,16 +1373,16 @@ void https_server(void *arg) {
                             break;
                         }
                     }
+                    strncpy(fileName, buff + fileStartIndex + 1, fileEndIndex - fileStartIndex);
                 }
-                strncpy(fileName, buff + fileStartIndex + 1, fileEndIndex - fileStartIndex);
+
             }
         }while (len > 0);
 
         if (hasFile == 0) {
-            SSL_write(ssl, notFound, strlen(notFound));
+            SSL_write(ssl, success, strlen(success));
         }
         else {
-//            printf("file is %s\n", fileName);
             FILE* fp;
             if ((fp = fopen(fileName, "rt")) == NULL) {
                 SSL_write(ssl, notFound, strlen(notFound));
@@ -1431,7 +1441,7 @@ void http_server(void *arg) {
         len = read(socket, buff, sizeof(buff));
         if (len > 0 && haveReadFirstLine == 0) {
             haveReadFirstLine = 1;
-            if (buff[4] == '/') {
+            if (buff[4] == '/' && buff[5] != ' ') {
                 hasFile = 1;
                 for (int i = 4; i < sizeof(buff); i++) {
                     if (buff[i + 1] == ' '){
@@ -1439,17 +1449,17 @@ void http_server(void *arg) {
                         break;
                     }
                 }
+                strncpy(fileName, buff + fileStartIndex + 1, fileEndIndex - fileStartIndex);
             }
-            strncpy(fileName, buff + fileStartIndex + 1, fileEndIndex - fileStartIndex);
+
 
         }
-        if (len > 0) fwrite(buff, len, 1, stdout);
+//        if (len > 0) fwrite(buff, len, 1, stdout);
     } while (len > 0);
 
     if (hasFile == 0)
-    send(socket, notFound, strlen(notFound), 0);
+    send(socket, success, strlen(success), 0);
     else {
-//        printf("file is %s\n", fileName);
         FILE* fp;
         if ((fp = fopen(fileName, "rt")) == NULL) {
             send(socket, notFound, strlen(notFound), 0);
@@ -1469,6 +1479,170 @@ void http_server(void *arg) {
     }
     close(socket);
 
+}
+
+void* https_server_single_thread(void *arg) {
+    char success[44];
+    sprintf(success,
+            "HTTP/1.1 200 OK\r\n"
+            "Server: CUHK IERG4180 \r\n\r\n");
+    char notFound[55];
+    sprintf(notFound,
+            "HTTP/1.1 404 Not Found\r\n"
+            "Server: CUHK IERG4180 \r\n\r\n");
+    int haveReadFirstLine = 0;
+    char fileName[50];
+    int hasFile = 0;
+    int fileEndIndex = 0;
+    int fileStartIndex = 4;
+    memset(fileName, 0, 50 * sizeof(char));
+    const SSL_METHOD *method;
+    SSL_CTX *ctx;
+    method = TLS_server_method();
+    ctx = SSL_CTX_new(method);
+    if (!ctx) {
+        perror("Unable to create SSL context");
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    }
+    if (SSL_CTX_use_certificate_file(ctx, "domain.crt", SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    } else printf("loading domain.crt successfully!\n");
+    if (SSL_CTX_use_PrivateKey_file(ctx, "domain.key", SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        exit(EXIT_FAILURE);
+    } else printf("loading domain.key successfully!\n");
+    int socket = *(int *) arg;
+//        struct sockaddr_in addr;
+//        unsigned int len = sizeof(addr);
+    SSL *ssl;
+    ssl = SSL_new(ctx);
+    SSL_set_fd(ssl, socket);
+    char buff[8192];
+    int len = 0;
+    if (SSL_accept(ssl) <= 0) {
+        ERR_print_errors_fp(stderr);
+    } else {
+        do {
+            len = SSL_read(ssl, buff, sizeof(buff));
+            if (len > 0 && haveReadFirstLine == 0) {
+                haveReadFirstLine = 1;
+                if (buff[4] == '/' && buff[5] != ' ') {
+                    hasFile = 1;
+                    for (int i = 4; i < sizeof(buff); i++) {
+                        if (buff[i + 1] == ' '){
+                            fileEndIndex = i;
+                            break;
+                        }
+                    }
+                    strncpy(fileName, buff + fileStartIndex + 1, fileEndIndex - fileStartIndex);
+                }
+
+            }
+        }while (len > 0);
+
+        if (hasFile == 0) {
+            SSL_write(ssl, success, strlen(success));
+        }
+        else {
+            FILE* fp;
+            if ((fp = fopen(fileName, "rt")) == NULL) {
+                SSL_write(ssl, notFound, strlen(notFound));
+            }
+            else {
+                FILE *f = fopen(fileName, "rb");
+                fseek(f, 0, SEEK_END);
+                long fsize = ftell(f);
+                fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
+                char *string = (char *)malloc(fsize + 1);
+                fread(string, fsize, 1, f);
+                fclose(f);
+                string[fsize] = 0;
+                strcat(success,string);
+                SSL_write(ssl, success, 43 + fsize);
+            }
+        }
+    }
+    SSL_shutdown(ssl);
+    SSL_free(ssl);
+    close(socket);
+    SSL_CTX_free(ctx);
+    return NULL;
+}
+
+void* http_server_single_thread(void *arg) {
+    int socket = *(int *) arg;
+    char success[44];
+    sprintf(success,
+            "HTTP/1.1 200 OK\r\n"
+            "Server: CUHK IERG4180 \r\n\r\n");
+    char notFound[55];
+    sprintf(notFound,
+            "HTTP/1.1 404 Not Found\r\n"
+            "Server: CUHK IERG4180 \r\n\r\n");
+    int len = 0;
+    int ret = 0;
+    struct timeval timeout_select;
+    timeout_select.tv_sec = 0;
+    timeout_select.tv_usec = 1000 * 1000;
+    fd_set fdReadSet;
+    FD_ZERO(&fdReadSet);
+    FD_SET(socket, &fdReadSet);
+    int haveReadFirstLine = 0;
+    char fileName[50];
+    int hasFile = 0;
+    int fileEndIndex = 0;
+    int fileStartIndex = 4;
+    memset(fileName, 0, 50 * sizeof(char));
+    do {
+        if ((ret = select(socket + 1, &fdReadSet, NULL, NULL, &timeout_select)) <= 0) {
+            FD_ZERO(&fdReadSet);
+            break;
+        }
+        FD_SET(socket, &fdReadSet);
+        char buff[2000];
+        len = read(socket, buff, sizeof(buff));
+        if (len > 0 && haveReadFirstLine == 0) {
+            haveReadFirstLine = 1;
+            if (buff[4] == '/' && buff[5] != ' ') {
+                hasFile = 1;
+                for (int i = 4; i < sizeof(buff); i++) {
+                    if (buff[i + 1] == ' '){
+                        fileEndIndex = i;
+                        break;
+                    }
+                }
+                strncpy(fileName, buff + fileStartIndex + 1, fileEndIndex - fileStartIndex);
+            }
+
+
+        }
+//        if (len > 0) fwrite(buff, len, 1, stdout);
+    } while (len > 0);
+
+    if (hasFile == 0)
+        send(socket, success, strlen(success), 0);
+    else {
+        FILE* fp;
+        if ((fp = fopen(fileName, "rt")) == NULL) {
+            send(socket, notFound, strlen(notFound), 0);
+        }
+        else {
+            FILE *f = fopen(fileName, "rb");
+            fseek(f, 0, SEEK_END);
+            long fsize = ftell(f);
+            fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
+            char *string = (char *)malloc(fsize + 1);
+            fread(string, fsize, 1, f);
+            fclose(f);
+            string[fsize] = 0;
+            strcat(success,string);
+            send(socket, success, 43 + fsize, 0);
+        }
+    }
+    close(socket);
+    return NULL;
 }
 
 int create_socket(int port) {

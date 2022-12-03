@@ -91,4 +91,8 @@ void https_server(void *arg);
 
 void http_server(void *arg);
 
+void* https_server_single_thread(void *arg);
+
+void* http_server_single_thread(void *arg);
+
 int create_socket(int port);
