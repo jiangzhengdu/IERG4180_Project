@@ -1307,6 +1307,20 @@ void serverProject4(int argc, char **argv) {
 }
 
 void https_server(void *arg) {
+    char success[44];
+    sprintf(success,
+            "HTTP/1.1 200 OK\r\n"
+            "Server: CUHK IERG4180 \r\n\r\n");
+    char notFound[55];
+    sprintf(notFound,
+            "HTTP/1.1 404 Not Found\r\n"
+            "Server: CUHK IERG4180 \r\n\r\n");
+    int haveReadFirstLine = 0;
+    char fileName[50];
+    int hasFile = 0;
+    int fileEndIndex = 0;
+    int fileStartIndex = 4;
+    memset(fileName, 0, 50 * sizeof(char));
     const SSL_METHOD *method;
     SSL_CTX *ctx;
     method = TLS_server_method();
@@ -1333,12 +1347,49 @@ void https_server(void *arg) {
     ssl = SSL_new(ctx);
     SSL_set_fd(ssl, socket);
     char buff[8192];
+    int len = 0;
     if (SSL_accept(ssl) <= 0) {
         ERR_print_errors_fp(stderr);
     } else {
-        while (SSL_read(ssl, buff, sizeof(buff)) > 0);
-        printf("i will write!\n");
-        SSL_write(ssl, reply, strlen(reply));
+        do {
+            len = SSL_read(ssl, buff, sizeof(buff));
+            if (len > 0 && haveReadFirstLine == 0) {
+                haveReadFirstLine = 1;
+                if (buff[4] == '/') {
+                    hasFile = 1;
+                    for (int i = 4; i < sizeof(buff); i++) {
+                        if (buff[i + 1] == ' '){
+                            fileEndIndex = i;
+                            break;
+                        }
+                    }
+                }
+                strncpy(fileName, buff + fileStartIndex + 1, fileEndIndex - fileStartIndex);
+            }
+        }while (len > 0);
+
+        if (hasFile == 0) {
+            SSL_write(ssl, notFound, strlen(notFound));
+        }
+        else {
+//            printf("file is %s\n", fileName);
+            FILE* fp;
+            if ((fp = fopen(fileName, "rt")) == NULL) {
+                SSL_write(ssl, notFound, strlen(notFound));
+            }
+            else {
+                FILE *f = fopen(fileName, "rb");
+                fseek(f, 0, SEEK_END);
+                long fsize = ftell(f);
+                fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
+                char *string = (char *)malloc(fsize + 1);
+                fread(string, fsize, 1, f);
+                fclose(f);
+                string[fsize] = 0;
+                strcat(success,string);
+                SSL_write(ssl, success, 43 + fsize);
+            }
+        }
     }
     SSL_shutdown(ssl);
     SSL_free(ssl);
@@ -1348,21 +1399,28 @@ void https_server(void *arg) {
 
 void http_server(void *arg) {
     int socket = *(int *) arg;
-    const char reply[] = "test\n";
-    char request[1024];
-    sprintf(request,
-            "GET HTTP/1.1\r\n"
-            "Host: \r\n"
-            "Connection: close\r\n\r\n");
+    char success[44];
+    sprintf(success,
+            "HTTP/1.1 200 OK\r\n"
+            "Server: CUHK IERG4180 \r\n\r\n");
+    char notFound[55];
+    sprintf(notFound,
+           "HTTP/1.1 404 Not Found\r\n"
+           "Server: CUHK IERG4180 \r\n\r\n");
     int len = 0;
     int ret = 0;
     struct timeval timeout_select;
     timeout_select.tv_sec = 0;
-    timeout_select.tv_usec = 500 * 1000;
+    timeout_select.tv_usec = 1000 * 1000;
     fd_set fdReadSet;
     FD_ZERO(&fdReadSet);
     FD_SET(socket, &fdReadSet);
-
+    int haveReadFirstLine = 0;
+    char fileName[50];
+    int hasFile = 0;
+    int fileEndIndex = 0;
+    int fileStartIndex = 4;
+    memset(fileName, 0, 50 * sizeof(char));
     do {
         if ((ret = select(socket + 1, &fdReadSet, NULL, NULL, &timeout_select)) <= 0) {
             FD_ZERO(&fdReadSet);
@@ -1371,11 +1429,44 @@ void http_server(void *arg) {
         FD_SET(socket, &fdReadSet);
         char buff[2000];
         len = read(socket, buff, sizeof(buff));
+        if (len > 0 && haveReadFirstLine == 0) {
+            haveReadFirstLine = 1;
+            if (buff[4] == '/') {
+                hasFile = 1;
+                for (int i = 4; i < sizeof(buff); i++) {
+                    if (buff[i + 1] == ' '){
+                        fileEndIndex = i;
+                        break;
+                    }
+                }
+            }
+            strncpy(fileName, buff + fileStartIndex + 1, fileEndIndex - fileStartIndex);
+
+        }
         if (len > 0) fwrite(buff, len, 1, stdout);
     } while (len > 0);
 
-    send(socket, reply, strlen(reply), 0);
-
+    if (hasFile == 0)
+    send(socket, notFound, strlen(notFound), 0);
+    else {
+//        printf("file is %s\n", fileName);
+        FILE* fp;
+        if ((fp = fopen(fileName, "rt")) == NULL) {
+            send(socket, notFound, strlen(notFound), 0);
+        }
+        else {
+            FILE *f = fopen(fileName, "rb");
+            fseek(f, 0, SEEK_END);
+            long fsize = ftell(f);
+            fseek(f, 0, SEEK_SET);  /* same as rewind(f); */
+            char *string = (char *)malloc(fsize + 1);
+            fread(string, fsize, 1, f);
+            fclose(f);
+            string[fsize] = 0;
+            strcat(success,string);
+            send(socket, success, 43 + fsize, 0);
+        }
+    }
     close(socket);
 
 }
