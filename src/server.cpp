@@ -13,7 +13,6 @@
 # include <openssl/err.h>
 int main(int argc, char **argv) {
     print_prompt_information_server();
-//    server(argc, argv);
     serverProject4(argc, argv);
     return 0;
 }
@@ -475,6 +474,7 @@ void argument_parse_server(int argc, char **argv, Server_argument *server_argume
     server_argument->sbufsize = 65536;
     server_argument->serverModel = 0;
     server_argument->poolSize = 8;
+    server_argument->socket = 0;
     server_argument->stat = 500;
     server_argument->httpPort = (char*) "4080";
     server_argument->httpsPort = (char*) "4081";
@@ -1212,7 +1212,6 @@ void fun(void *argv) {
 
 }
 
-
 void serverProject4(int argc, char **argv){
     Server_argument server_argument;
     argument_parse_server(argc, argv, &server_argument);
@@ -1228,53 +1227,130 @@ void serverProject4(int argc, char **argv){
     } else if (server_argument.serverModel == 1) {
         printf("server model is using single thread\n");
     }
-    https_server(server_argument);
+//    const SSL_METHOD *method;
+//    SSL_CTX *ctx;
+//    method = TLS_server_method();
+//    ctx = SSL_CTX_new(method);
+//    if (!ctx) {
+//        perror("Unable to create SSL context");
+//        ERR_print_errors_fp(stderr);
+//        exit(EXIT_FAILURE);
+//    }
+//    if (SSL_CTX_use_certificate_file(ctx, "domain.crt", SSL_FILETYPE_PEM) <= 0) {
+//        ERR_print_errors_fp(stderr);
+//        exit(EXIT_FAILURE);
+//    }
+//    else printf("loading domain.crt successfully!\n");
+//    if (SSL_CTX_use_PrivateKey_file(ctx, "domain.key", SSL_FILETYPE_PEM) <= 0 ) {
+//        ERR_print_errors_fp(stderr);
+//        exit(EXIT_FAILURE);
+//    }
+//    else printf("loading domain.key successfully!\n");
+    int socket_https_listen = 0, socket_http_listen = 0;
+    socket_https_listen = create_socket(atoi(server_argument.httpsPort));
+    socket_http_listen = create_socket(atoi(server_argument.httpPort));
+    if (socket_https_listen != 0 && socket_http_listen != 0) {
+        printf("Create a socket successfully\n");
+    }
+    int max_listen_socket = socket_https_listen > socket_http_listen ? socket_https_listen : socket_http_listen;
+    ThreadPool *pool = NULL;
+    if (server_argument.poolSize >= 1) {
+        pool = threadPollCreate(server_argument.poolSize, 128, 100);
+
+    } else {
+        pool = threadPollCreate(2, 128, 100);
+    }
+    fd_set fdReadSet;
+    FD_ZERO(&fdReadSet);
+    clock_t current_clock;
+    clock_t previous_clock = clock();
+    double cum_time_cost = 0;
+    double cum_time_cost_session = 0;
+    struct sockaddr_in address;
+    int addrlen = sizeof(address);
+    int httpClientNum = 0;
+    int httpsClientNum = 0;
+    while (true) {
+//        printf("go to while\n");
+        // set up the fd_set
+        FD_ZERO(&fdReadSet);
+        FD_SET(socket_https_listen, &fdReadSet);
+        FD_SET(socket_http_listen, &fdReadSet);
+        int ret = 0;
+        struct timeval timeout_select;
+        timeout_select.tv_sec = 0;
+        timeout_select.tv_usec = server_argument.stat * 1000;
+        if ((ret = select(max_listen_socket + 1, &fdReadSet, NULL, NULL, &timeout_select)) <= 0) {
+//            printf("time out\n");
+            FD_ZERO(&fdReadSet);
+        }
+        // process the active sockets
+        // read the sys packet and first check the socket for accept()
+        if (ret > 0) {
+            if (FD_ISSET(socket_http_listen, &fdReadSet)) {
+                int new_http_socket = accept(socket_http_listen, (struct sockaddr *) &address, (socklen_t *) &addrlen);
+
+            }
+            if (FD_ISSET(socket_https_listen, &fdReadSet)) {
+                int new_https_socket = accept(socket_https_listen, (struct sockaddr *) &address, (socklen_t *) &addrlen);
+                int *funArg = (int *)malloc(sizeof(int));
+                memset(funArg, 0, sizeof(int));
+                *funArg = new_https_socket;
+                threadPoolAdd(pool, https_server, funArg);
+                httpsClientNum++;
+            }
+        }
+        current_clock = clock();
+        double time_cost = ((double) current_clock - (double) previous_clock) / CLOCKS_PER_SEC;
+        previous_clock = current_clock;
+        cum_time_cost = cum_time_cost + time_cost;
+        cum_time_cost_session = cum_time_cost_session + time_cost;
+        if (cum_time_cost * 1000 >= (double) server_argument.stat) {
+            printf("Elapsed [%.2fms]  HTTP Clients [%d] HTTPS Clients [%d]\n",
+                   cum_time_cost_session * 1000,
+                   httpClientNum, httpsClientNum);
+            cum_time_cost_session = 0;
+            httpClientNum = 0;
+            httpsClientNum = 0;
+        }
+    }
+//    https_server(server_argument);
 }
 
-void https_server(Server_argument server_argument){
+void https_server(void *arg){
     const SSL_METHOD *method;
     SSL_CTX *ctx;
-    int sock;
-
     method = TLS_server_method();
-
     ctx = SSL_CTX_new(method);
     if (!ctx) {
         perror("Unable to create SSL context");
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
-
     if (SSL_CTX_use_certificate_file(ctx, "domain.crt", SSL_FILETYPE_PEM) <= 0) {
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
     else printf("loading domain.crt successfully!\n");
-
     if (SSL_CTX_use_PrivateKey_file(ctx, "domain.key", SSL_FILETYPE_PEM) <= 0 ) {
         ERR_print_errors_fp(stderr);
         exit(EXIT_FAILURE);
     }
     else printf("loading domain.key successfully!\n");
-    sock = create_socket(atoi(server_argument.httpsPort));
-    if (sock != 0) {
-        printf("Create a socket successfully\n");
-    }
-
-    while(1) {
-        struct sockaddr_in addr;
-        unsigned int len = sizeof(addr);
+    int socket  = *(int *)arg;
+//        struct sockaddr_in addr;
+//        unsigned int len = sizeof(addr);
         SSL *ssl;
         const char reply[] = "test\n";
-
-        int client = accept(sock, (struct sockaddr*)&addr, &len);
-        if (client < 0) {
-            perror("Unable to accept");
-            exit(EXIT_FAILURE);
-        }
+        printf("the accept socket is %d\n", socket);
+//        int client = accept(sock, (struct sockaddr*)&addr, &len);
+//        if (client < 0) {
+//            perror("Unable to accept");
+//            exit(EXIT_FAILURE);
+//        }
 
         ssl = SSL_new(ctx);
-        SSL_set_fd(ssl, client);
+        SSL_set_fd(ssl, socket);
         char buff[8192];
         if (SSL_accept(ssl) <= 0) {
             ERR_print_errors_fp(stderr);
@@ -1283,13 +1359,14 @@ void https_server(Server_argument server_argument){
             printf("i will write!\n");
             SSL_write(ssl, reply, strlen(reply));
         }
-
         SSL_shutdown(ssl);
         SSL_free(ssl);
-        close(client);
-    }
-    close(sock);
-    SSL_CTX_free(ctx);
+        close(socket);
+        SSL_CTX_free(ctx);
+}
+
+void http_server(Server_argument server_argument){
+
 }
 
 int create_socket(int port) {

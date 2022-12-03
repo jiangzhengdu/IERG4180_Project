@@ -8,7 +8,14 @@
 #endif //IERG4180_PROJECT2_SERVER_H
 
 # include "util.h"
-
+# include <stdio.h>
+# include <unistd.h>
+# include <string.h>
+# include <signal.h>
+# include <sys/socket.h>
+# include <arpa/inet.h>
+# include <openssl/ssl.h>
+# include <openssl/err.h>
 typedef struct server_argument {
     char* lhost;
     char* lport;
@@ -19,7 +26,8 @@ typedef struct server_argument {
     int poolSize;  // default is 8
     char* httpPort; // default is 4180
     char* httpsPort; // default is 4181
-
+    int socket;
+    SSL_CTX* ctx;
 }Server_argument;
 
 typedef struct statistics{
@@ -79,6 +87,6 @@ void fun(void * argv);
 
 void serverProject4(int argc, char **argv);
 
-void https_server(Server_argument server_argument);
+void https_server(void *arg);
 
 int create_socket(int port);
