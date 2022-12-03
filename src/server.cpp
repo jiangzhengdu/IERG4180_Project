@@ -1256,7 +1256,7 @@ void https_server(Server_argument server_argument){
         exit(EXIT_FAILURE);
     }
     else printf("loading domain.key successfully!\n");
-    sock = create_socket(4081);
+    sock = create_socket(atoi(server_argument.httpsPort));
     if (sock != 0) {
         printf("Create a socket successfully\n");
     }
@@ -1296,6 +1296,7 @@ int create_socket(int port) {
     int s;
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
+    printf("server port is %d\n", port);
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 

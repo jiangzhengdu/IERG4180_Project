@@ -85,6 +85,7 @@ typedef struct client_argument {
     char* url;
     int https; // https = 1, else https = 0
     char* fileName;
+    char* filePath;
 }Client_argument;
 
 

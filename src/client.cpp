@@ -28,8 +28,9 @@ int client(int argc, char **argv) {
     argument_parse_client(argc, argv, &client_argument);
     printf("url is %s\n", client_argument.url);
     printf("filename is %s\n", client_argument.fileName);
+    printf("the port number is %s\n", client_argument.rport);
     printf("\n\n\n");
-    return 0;
+
     if (client_argument.https == 0) {
         http_request(client_argument);
     }
@@ -55,6 +56,7 @@ void argument_parse_client(int argc, char **argv, Client_argument *client_argume
     client_argument->rbufsize = 65536;
     client_argument->url = (char *) "https://localhost:4081";
     client_argument->https = 0;
+    client_argument->filePath = (char *)"filepath";
     client_argument->fileName = (char *)"filename";
 
     for (int i = 1; i < argc; i++) {
@@ -81,31 +83,17 @@ void argument_parse_client(int argc, char **argv, Client_argument *client_argume
             if (parseRet[1][0] != '\0')
             client_argument->rport = parseRet[1];
             if (parseRet[2][0] != '\0')
-            client_argument->fileName = parseRet[2];
+            client_argument->filePath = parseRet[2];
             if (argv[i][4] == 's') {
                 client_argument->https = 1;
-                if (parseRet[2][0] == '\0')
+                if (parseRet[1][0] == '\0')
                 client_argument->rport = (char *)"443";
-//                int k = 8;
-//                while (argv[i][k] != '\0') {
-//                    domainName[index] = argv[i][k];
-//                    k++;
-//                    index++;
-//                }
             }
             else {
                 client_argument->https = 0;
-                if (parseRet[2][0] == '\0')
+                if (parseRet[1][0] == '\0')
                 client_argument->rport = (char *)"80";
-//                int k = 7;
-//                while (argv[i][k] != '\0') {
-//                    domainName[index] = argv[i][k];
-//                    k++;
-//                    index++;
-//                }
             }
-//            strncpy(client_argument->url, domainName, index);
-//            client_argument->url = domainName;
             continue;
         }
         if (i + 1 < argc && argv[i][0] == '-') {
@@ -548,21 +536,50 @@ int https_request(Client_argument client_argument) {
     // send a http Get request
 
     char request[8192];
+    if (strcmp(client_argument.filePath, "filepath") == 0) {
+        client_argument.filePath = (char*)"/";
+        printf("no filepath\n");
+    }
     sprintf(request,
-            "GET / HTTP/1.1\r\n"
+            "GET %s HTTP/1.1\r\n"
             "Host: %s\r\n"
-            "Connection: close\r\n\r\n", client_argument.url
+            "Connection: close\r\n\r\n", client_argument.filePath, client_argument.url
     );
+    printf("request is %s\n", request);
+//    sprintf(request,
+//            "GET / HTTP/1.1\r\n"
+//            "Host: %s\r\n"
+//            "Connection: close\r\n\r\n", client_argument.url
+//    );
     SSL_write(ssl, request, strlen(request));
     SSL_shutdown(ssl);
     // Receive and print out the HTTP response
     printf("--------RESPONSE RECEIVED----------\n");
+    int hasFileName = 0;
+    if (strcmp(client_argument.fileName, "filename") != 0){
+        hasFileName = 1;
+    }
     int len = 0;
-    do {
-        char buff[2000];
-        len = SSL_read(ssl, buff, sizeof(buff));
-        if (len > 0) fwrite(buff, len, 1, stdout);
-    }while(len < 0);
+    if (hasFileName == 1) {
+        FILE *fp;
+        fp = fopen(client_argument.fileName, "w");
+        do {
+            char buff[2000];
+            len = SSL_read(ssl, buff, sizeof(buff));
+            if (len > 0) fwrite(buff, len, 1, fp);
+        }while(len > 0);
+        fclose(fp);
+    }
+    else {
+        do {
+            char buff[2000];
+            len = SSL_read(ssl, buff, sizeof(buff));
+            if (len > 0) fwrite(buff, len, 1, stdout);
+        }while(len > 0);
+    }
+    SSL_free(ssl);
+    close(server);
+
     printf("\n-----------------------------------------------\n");
     return 0;
 }
@@ -578,6 +595,7 @@ char** getRequestInfo(char* url) {
 
     int portDetected = 0;
     int pathDetected = 0;
+
     int urlStart = 0;
     int urlEnd = 0;
     int portStart = 0;
@@ -590,22 +608,26 @@ char** getRequestInfo(char* url) {
     else{
         urlStart = 7;
     }
-    for (int i  = 0; url[i] != '\0'; i++) {
+    for (int i  = urlStart; url[i] != '\0'; i++) {
 //        printf("url[%d] is %c \n", i, url[i]);
-        if (url[i] == ':' && portDetected == 0) {
+        if (url[i] == ':') {
             portDetected = 1;
-            continue;
-        }
-        if (url[i] == ':' && portDetected == 1) {
             portStart = i + 1;
             urlEnd = i - 1;
             continue;
         }
-        if (portStart != 0 && url[i] == '/') {
-            portEnd = i - 1;
-            pathStart = i;
-            pathDetected = 1;
-            continue;
+        if (url[i] == '/') {
+            if (portDetected == 1 && portEnd == 0) {
+                portEnd = i - 1;
+                pathStart = i;
+                pathDetected = 1;
+                continue;
+            }
+            else if (urlEnd == 0){
+                urlEnd = i - 1;
+                pathStart = i;
+                continue;
+            }
         }
         if (pathDetected == 1 && url[i + 1] == '\0'){
             pathEnd = i;
@@ -613,13 +635,19 @@ char** getRequestInfo(char* url) {
         }
         if (urlEnd == 0 && url[i + 1] == '\0') {
             urlEnd = i;
+            pathDetected = 0;
+            break;
+        }
+        if (portEnd == 0 && url[i + 1] == '\0') {
+            portEnd = i;
+            pathDetected = 0;
             break;
         }
     }
 
-//    printf("urlStart is %d  urlEnd is %d\n", urlStart, urlEnd);
-//    printf("portStart is %d  portEnd is %d\n", portStart, portEnd);
-//    printf("pathStart is %d  pathEnd is %d\n", pathStart, pathEnd);
+    printf("urlStart is %d  urlEnd is %d\n", urlStart, urlEnd);
+    printf("portStart is %d  portEnd is %d\n", portStart, portEnd);
+    printf("pathStart is %d  pathEnd is %d\n", pathStart, pathEnd);
     strncpy(res[0], url + urlStart, urlEnd - urlStart + 1);
 //    printf("url is %s\n", res[0]);
     if (portDetected == 1)
