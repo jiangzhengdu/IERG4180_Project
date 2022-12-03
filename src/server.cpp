@@ -1228,25 +1228,6 @@ void serverProject4(int argc, char **argv) {
     } else if (server_argument.serverModel == 1) {
         printf("server model is using single thread\n");
     }
-//    const SSL_METHOD *method;
-//    SSL_CTX *ctx;
-//    method = TLS_server_method();
-//    ctx = SSL_CTX_new(method);
-//    if (!ctx) {
-//        perror("Unable to create SSL context");
-//        ERR_print_errors_fp(stderr);
-//        exit(EXIT_FAILURE);
-//    }
-//    if (SSL_CTX_use_certificate_file(ctx, "domain.crt", SSL_FILETYPE_PEM) <= 0) {
-//        ERR_print_errors_fp(stderr);
-//        exit(EXIT_FAILURE);
-//    }
-//    else printf("loading domain.crt successfully!\n");
-//    if (SSL_CTX_use_PrivateKey_file(ctx, "domain.key", SSL_FILETYPE_PEM) <= 0 ) {
-//        ERR_print_errors_fp(stderr);
-//        exit(EXIT_FAILURE);
-//    }
-//    else printf("loading domain.key successfully!\n");
     int socket_https_listen = 0, socket_http_listen = 0;
     socket_https_listen = create_socket(atoi(server_argument.httpsPort));
     socket_http_listen = create_socket(atoi(server_argument.httpPort));

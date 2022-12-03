@@ -113,5 +113,6 @@ int InitializeWinsock();
 int server_response_udp(int socket, struct sockaddr_in client_address, int client_port);
 int client_response_tcp(struct sockaddr_in server_address, Client_argument client_argument);
 int client_response_udp(int socket, struct sockaddr_in client_address, Client_argument client_argument, struct sockaddr_in server_address);
+int getHttpBodyIndex(char* url);
 
 

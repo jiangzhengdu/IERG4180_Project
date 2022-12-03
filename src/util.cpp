@@ -954,3 +954,14 @@ int client_response_tcp(struct sockaddr_in server_address, Client_argument clien
     return 1;
 }
 
+int getHttpBodyIndex(char* url) {
+    int index = 0;
+    for (int i = 0; url[i] != '\0'; i++){
+        if (url[i] == '\r' && url[i + 1] == '\n' && url[i + 2] == '\r' && url[i + 3] == '\n') {
+            index = i + 4;
+            return index;
+        }
+    }
+    return index;
+}
+
