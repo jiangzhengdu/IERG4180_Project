@@ -1,6 +1,6 @@
 # IERG4180_Project4 README
 
-This is for IERG 4180 Project4, which is also the final project for IEGR4180. I really learn a lot from this course. I am not fear the socket programming anymore (i think) after this course. And this course is also one of my best courses during the first term in CUHK.
+This is for IERG 4180 Project4, which is also the final version for IEGR4180. I really learn a lot from this course. I am not fear the socket programming anymore (i think) after this course. And this course is also one of my best courses during the first term in CUHK.
 
 ## About the project4
 
